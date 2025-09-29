@@ -10,13 +10,13 @@ const generateTokens = (userId) => {
   const accessToken = jwt.sign(
     { userId },
     process.env.JWT_SECRET,
-    { expiresIn: process.env.JWT_EXPIRES_IN || '1d' }
+    { expiresIn: process.env.JWT_EXPIRES_IN }
   );
 
   const refreshToken = jwt.sign(
     { userId },
-    process.env.REFRESH_TOKEN_SECRET || process.env.JWT_SECRET,
-    { expiresIn: process.env.REFRESH_TOKEN_EXPIRES_IN || '7d' }
+    process.env.REFRESH_TOKEN_SECRET,
+    { expiresIn: process.env.REFRESH_TOKEN_EXPIRES_IN }
   );
 
   return { accessToken, refreshToken };
@@ -27,18 +27,8 @@ const register = async (req, res) => {
   try {
     const { email, password, firstName, lastName, phone, whatsapp, role } = req.body;
 
-    console.log('Registration attempt:', { email, firstName, lastName, role });
-
-    // Validate required fields
-    if (!email || !password || !firstName || !lastName || !phone) {
-      return res.status(400).json({
-        success: false,
-        message: 'All required fields must be provided'
-      });
-    }
-
     // Check if user already exists
-    const existingUser = await User.findOne({ email: email.toLowerCase() });
+    const existingUser = await User.findOne({ email });
     if (existingUser) {
       return res.status(400).json({
         success: false,
@@ -46,70 +36,38 @@ const register = async (req, res) => {
       });
     }
 
-    // Validate role
-    const validRoles = ['student', 'instructor'];
-    const userRole = role && validRoles.includes(role) ? role : 'student';
-
     // Create user
     const user = new User({
-      email: email.toLowerCase(),
+      email,
       password,
-      firstName: firstName.trim(),
-      lastName: lastName.trim(),
-      phone: phone.trim(),
-      whatsapp: whatsapp ? whatsapp.trim() : phone.trim(),
-      role: userRole,
-      isActive: true
+      firstName,
+      lastName,
+      phone,
+      whatsapp: whatsapp || phone,
+      role
     });
 
     await user.save();
-    console.log('User created successfully:', user._id);
 
     // Create role-specific profile
-    try {
-      if (userRole === 'student') {
-        const student = new Student({
-          user: user._id,
-          enrolledCourses: [],
-          batches: [],
-          attendance: [],
-          assignments: [],
-          performance: {
-            overallGrade: 0,
-            attendancePercentage: 0,
-            assignmentCompletion: 0
-          }
-        });
-        await student.save();
-        console.log('Student profile created:', student._id);
-      } else if (userRole === 'instructor') {
-        const instructor = new Instructor({
-          user: user._id,
-          bio: 'Welcome! Please update your profile with your bio.',
-          designation: 'Instructor',
-          experience: 0,
-          skills: [],
-          specializations: [],
-          certificates: [],
-          education: [],
-          socialLinks: {},
-          rating: 0,
-          totalStudents: 0,
-          isApproved: false,
-          isActive: true
-        });
-        await instructor.save();
-        console.log('Instructor profile created:', instructor._id);
-      }
-    } catch (profileError) {
-      console.error('Error creating role-specific profile:', profileError);
-      // Delete the user if profile creation fails
-      await User.findByIdAndDelete(user._id);
-      return res.status(500).json({
-        success: false,
-        message: 'Failed to create user profile',
-        error: process.env.NODE_ENV === 'development' ? profileError.message : undefined
+    if (role === 'student') {
+      const student = new Student({
+        user: user._id,
+        enrolledCourses: [],
+        batches: []
       });
+      await student.save();
+    } else if (role === 'instructor') {
+      const instructor = new Instructor({
+        user: user._id,
+        bio: 'Instructor profile to be updated',
+        designation: 'Instructor',
+        experience: 0,
+        skills: [],
+        certificates: [],
+        isApproved: false
+      });
+      await instructor.save();
     }
 
     // Generate tokens
@@ -119,14 +77,12 @@ const register = async (req, res) => {
     user.refreshToken = refreshToken;
     await user.save();
 
-    // Send welcome email (don't fail if email fails)
+    // Send welcome email
     try {
-      if (emailService && emailService.sendWelcomeEmail) {
-        await emailService.sendWelcomeEmail(user.email, user.firstName, user.role);
-      }
+      await emailService.sendWelcomeEmail(user.email, user.firstName, user.role);
     } catch (emailError) {
       console.error('Failed to send welcome email:', emailError);
-      // Continue with registration even if email fails
+      // Don't fail registration if email fails
     }
 
     res.status(201).json({
@@ -146,29 +102,10 @@ const register = async (req, res) => {
     });
   } catch (error) {
     console.error('Registration error:', error);
-    
-    // Handle specific validation errors
-    if (error.name === 'ValidationError') {
-      const errors = Object.values(error.errors).map(e => e.message);
-      return res.status(400).json({
-        success: false,
-        message: 'Validation error',
-        errors
-      });
-    }
-
-    // Handle duplicate key error
-    if (error.code === 11000) {
-      return res.status(400).json({
-        success: false,
-        message: 'User already exists with this email'
-      });
-    }
-
     res.status(500).json({
       success: false,
       message: 'Registration failed',
-      error: process.env.NODE_ENV === 'development' ? error.message : 'Internal server error'
+      error: process.env.NODE_ENV === 'development' ? error.message : undefined
     });
   }
 };
@@ -178,15 +115,8 @@ const login = async (req, res) => {
   try {
     const { email, password } = req.body;
 
-    if (!email || !password) {
-      return res.status(400).json({
-        success: false,
-        message: 'Email and password are required'
-      });
-    }
-
     // Find user
-    const user = await User.findOne({ email: email.toLowerCase() });
+    const user = await User.findOne({ email });
     if (!user) {
       return res.status(401).json({
         success: false,
@@ -258,7 +188,7 @@ const refreshToken = async (req, res) => {
     }
 
     // Verify refresh token
-    const decoded = jwt.verify(refreshToken, process.env.REFRESH_TOKEN_SECRET || process.env.JWT_SECRET);
+    const decoded = jwt.verify(refreshToken, process.env.REFRESH_TOKEN_SECRET);
     const user = await User.findById(decoded.userId);
 
     if (!user || user.refreshToken !== refreshToken) {
@@ -449,7 +379,7 @@ const forgotPassword = async (req, res) => {
   try {
     const { email } = req.body;
 
-    const user = await User.findOne({ email: email.toLowerCase() });
+    const user = await User.findOne({ email });
     if (!user) {
       return res.status(404).json({
         success: false,
@@ -470,9 +400,7 @@ const forgotPassword = async (req, res) => {
 
     // Send reset email
     try {
-      if (emailService && emailService.sendPasswordResetEmail) {
-        await emailService.sendPasswordResetEmail(user.email, user.firstName, resetToken);
-      }
+      await emailService.sendPasswordResetEmail(user.email, user.firstName, resetToken);
       
       res.json({
         success: true,
@@ -505,12 +433,9 @@ const resetPassword = async (req, res) => {
   try {
     const { token, newPassword } = req.body;
 
-    // Hash the token to match stored hash
-    const hashedToken = crypto.createHash('sha256').update(token).digest('hex');
-
     // Find user with valid reset token
     const user = await User.findOne({
-      resetPasswordToken: hashedToken,
+      resetPasswordToken: token,
       resetPasswordExpires: { $gt: Date.now() }
     });
 
@@ -530,9 +455,7 @@ const resetPassword = async (req, res) => {
 
     // Send confirmation email
     try {
-      if (emailService && emailService.sendPasswordResetConfirmation) {
-        await emailService.sendPasswordResetConfirmation(user.email, user.firstName);
-      }
+      await emailService.sendPasswordResetConfirmation(user.email, user.firstName);
     } catch (emailError) {
       console.error('Failed to send confirmation email:', emailError);
       // Don't fail reset if confirmation email fails
