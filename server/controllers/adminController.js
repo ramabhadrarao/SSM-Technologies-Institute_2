@@ -2,6 +2,7 @@
 const User = require('../models/User');
 const Student = require('../models/Student');
 const Instructor = require('../models/Instructor');
+const emailService = require('../utils/emailService');
 
 // Get all users with filtering and pagination
 const getUsers = async (req, res) => {
@@ -470,6 +471,70 @@ const getUserStats = async (req, res) => {
   }
 };
 
+// Approve or reject instructor
+const approveInstructor = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { isApproved } = req.body;
+
+    // Find the user
+    const user = await User.findById(id);
+    if (!user) {
+      return res.status(404).json({
+        success: false,
+        message: 'User not found'
+      });
+    }
+
+    if (user.role !== 'instructor') {
+      return res.status(400).json({
+        success: false,
+        message: 'User is not an instructor'
+      });
+    }
+
+    // Find and update instructor profile
+    const instructor = await Instructor.findOne({ user: id });
+    if (!instructor) {
+      return res.status(404).json({
+        success: false,
+        message: 'Instructor profile not found'
+      });
+    }
+
+    // Update approval status
+    instructor.isApproved = isApproved;
+    await instructor.save();
+
+    // Send email notification
+    try {
+      await emailService.sendInstructorApprovalEmail(
+        user.email,
+        `${user.firstName} ${user.lastName}`,
+        isApproved
+      );
+    } catch (emailError) {
+      console.error('Failed to send approval email:', emailError);
+      // Don't fail the request if email fails
+    }
+
+    res.json({
+      success: true,
+      message: `Instructor ${isApproved ? 'approved' : 'rejected'} successfully`,
+      data: {
+        userId: user._id,
+        isApproved: instructor.isApproved
+      }
+    });
+  } catch (error) {
+    console.error('Approve instructor error:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Failed to update instructor approval status'
+    });
+  }
+};
+
 module.exports = {
   getUsers,
   getUser,
@@ -478,5 +543,6 @@ module.exports = {
   deleteUser,
   toggleUserStatus,
   bulkUpdateUsers,
-  getUserStats
+  getUserStats,
+  approveInstructor
 };

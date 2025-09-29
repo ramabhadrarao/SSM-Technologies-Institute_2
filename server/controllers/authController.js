@@ -22,28 +22,57 @@ const generateTokens = (userId) => {
   return { accessToken, refreshToken };
 };
 
+// Clean phone number (remove spaces, dashes, parentheses)
+const cleanPhoneNumber = (phone) => {
+  if (!phone) return '';
+  return phone.replace(/[\s\-()]/g, '');
+};
+
 // Register user
 const register = async (req, res) => {
   try {
     const { email, password, firstName, lastName, phone, whatsapp, role } = req.body;
 
+    // Normalize email
+    const normalizedEmail = email.toLowerCase().trim();
+
     // Check if user already exists
-    const existingUser = await User.findOne({ email });
+    const existingUser = await User.findOne({ email: normalizedEmail });
     if (existingUser) {
       return res.status(400).json({
         success: false,
-        message: 'User already exists with this email'
+        message: 'An account with this email already exists. Please use a different email or try logging in.'
+      });
+    }
+
+    // Clean phone numbers
+    const cleanPhone = cleanPhoneNumber(phone);
+    const cleanWhatsapp = whatsapp ? cleanPhoneNumber(whatsapp) : cleanPhone;
+
+    // Validate phone number length
+    if (cleanPhone.length < 10 || cleanPhone.length > 15) {
+      return res.status(400).json({
+        success: false,
+        message: 'Phone number must be between 10 and 15 digits'
+      });
+    }
+
+    // Validate role
+    if (!['student', 'instructor'].includes(role)) {
+      return res.status(400).json({
+        success: false,
+        message: 'Invalid role. Must be either student or instructor'
       });
     }
 
     // Create user
     const user = new User({
-      email,
+      email: normalizedEmail,
       password,
-      firstName,
-      lastName,
-      phone,
-      whatsapp: whatsapp || phone,
+      firstName: firstName.trim(),
+      lastName: lastName.trim(),
+      phone: cleanPhone,
+      whatsapp: cleanWhatsapp,
       role
     });
 
@@ -54,20 +83,37 @@ const register = async (req, res) => {
       const student = new Student({
         user: user._id,
         enrolledCourses: [],
-        batches: []
+        batches: [],
+        attendance: [],
+        assignments: [],
+        performance: {
+          overallGrade: 0,
+          attendancePercentage: 0,
+          assignmentCompletion: 0
+        }
       });
       await student.save();
+      
+      console.log(`✅ Student profile created for ${normalizedEmail}`);
     } else if (role === 'instructor') {
       const instructor = new Instructor({
         user: user._id,
-        bio: 'Instructor profile to be updated',
+        bio: 'Welcome to SSM Technologies! Please update your profile with your experience and expertise.',
         designation: 'Instructor',
         experience: 0,
         skills: [],
         certificates: [],
-        isApproved: false
+        specializations: [],
+        education: [],
+        socialLinks: {},
+        isApproved: false, // Instructors need approval
+        isActive: true,
+        rating: 0,
+        totalStudents: 0
       });
       await instructor.save();
+      
+      console.log(`✅ Instructor profile created for ${normalizedEmail} (pending approval)`);
     }
 
     // Generate tokens
@@ -77,34 +123,62 @@ const register = async (req, res) => {
     user.refreshToken = refreshToken;
     await user.save();
 
-    // Send welcome email
+    // Send welcome email (don't fail registration if email fails)
     try {
       await emailService.sendWelcomeEmail(user.email, user.firstName, user.role);
+      console.log(`✅ Welcome email sent to ${normalizedEmail}`);
     } catch (emailError) {
       console.error('Failed to send welcome email:', emailError);
       // Don't fail registration if email fails
     }
 
+    // Log successful registration
+    console.log(`🎉 New ${role} registered: ${normalizedEmail}`);
+
     res.status(201).json({
       success: true,
-      message: 'User registered successfully',
+      message: role === 'instructor' 
+        ? 'Account created successfully! Your instructor profile will be reviewed by our team within 24-48 hours.'
+        : 'Account created successfully! Welcome to SSM Technologies.',
       data: {
         user: {
           id: user._id,
           email: user.email,
           firstName: user.firstName,
           lastName: user.lastName,
-          role: user.role
+          role: user.role,
+          isActive: user.isActive
         },
         accessToken,
-        refreshToken
+        refreshToken,
+        requiresApproval: role === 'instructor'
       }
     });
   } catch (error) {
     console.error('Registration error:', error);
+    
+    // Handle specific MongoDB errors
+    if (error.code === 11000) {
+      const field = Object.keys(error.keyPattern)[0];
+      return res.status(400).json({
+        success: false,
+        message: `This ${field} is already registered. Please use a different ${field}.`
+      });
+    }
+    
+    // Handle validation errors
+    if (error.name === 'ValidationError') {
+      const errors = Object.values(error.errors).map(e => e.message);
+      return res.status(400).json({
+        success: false,
+        message: 'Validation failed',
+        errors
+      });
+    }
+
     res.status(500).json({
       success: false,
-      message: 'Registration failed',
+      message: 'Registration failed. Please try again later.',
       error: process.env.NODE_ENV === 'development' ? error.message : undefined
     });
   }
@@ -115,12 +189,15 @@ const login = async (req, res) => {
   try {
     const { email, password } = req.body;
 
+    // Normalize email
+    const normalizedEmail = email.toLowerCase().trim();
+
     // Find user
-    const user = await User.findOne({ email });
+    const user = await User.findOne({ email: normalizedEmail });
     if (!user) {
       return res.status(401).json({
         success: false,
-        message: 'Invalid email or password'
+        message: 'Invalid email or password. Please check your credentials and try again.'
       });
     }
 
@@ -128,7 +205,7 @@ const login = async (req, res) => {
     if (!user.isActive) {
       return res.status(401).json({
         success: false,
-        message: 'Account is deactivated. Please contact administrator.'
+        message: 'Your account has been deactivated. Please contact support for assistance.'
       });
     }
 
@@ -137,8 +214,17 @@ const login = async (req, res) => {
     if (!isPasswordValid) {
       return res.status(401).json({
         success: false,
-        message: 'Invalid email or password'
+        message: 'Invalid email or password. Please check your credentials and try again.'
       });
+    }
+
+    // Check if instructor is approved
+    if (user.role === 'instructor') {
+      const instructor = await Instructor.findOne({ user: user._id });
+      if (instructor && !instructor.isApproved) {
+        console.log(`⚠️ Instructor login attempt (not approved): ${normalizedEmail}`);
+        // Allow login but send approval status
+      }
     }
 
     // Generate tokens
@@ -148,6 +234,8 @@ const login = async (req, res) => {
     user.refreshToken = refreshToken;
     user.lastLogin = new Date();
     await user.save();
+
+    console.log(`✅ User logged in: ${normalizedEmail} (${user.role})`);
 
     res.json({
       success: true,
@@ -159,7 +247,9 @@ const login = async (req, res) => {
           firstName: user.firstName,
           lastName: user.lastName,
           role: user.role,
-          profileImageUrl: user.profileImageUrl
+          profileImageUrl: user.profileImageUrl,
+          isActive: user.isActive,
+          lastLogin: user.lastLogin
         },
         accessToken,
         refreshToken
@@ -169,7 +259,7 @@ const login = async (req, res) => {
     console.error('Login error:', error);
     res.status(500).json({
       success: false,
-      message: 'Login failed',
+      message: 'Login failed. Please try again later.',
       error: process.env.NODE_ENV === 'development' ? error.message : undefined
     });
   }
@@ -198,6 +288,13 @@ const refreshToken = async (req, res) => {
       });
     }
 
+    if (!user.isActive) {
+      return res.status(401).json({
+        success: false,
+        message: 'Account is deactivated'
+      });
+    }
+
     // Generate new tokens
     const { accessToken, refreshToken: newRefreshToken } = generateTokens(user._id);
 
@@ -214,6 +311,14 @@ const refreshToken = async (req, res) => {
     });
   } catch (error) {
     console.error('Refresh token error:', error);
+    
+    if (error.name === 'TokenExpiredError') {
+      return res.status(401).json({
+        success: false,
+        message: 'Refresh token expired. Please login again.'
+      });
+    }
+    
     res.status(401).json({
       success: false,
       message: 'Invalid refresh token'
@@ -228,6 +333,7 @@ const logout = async (req, res) => {
     if (user) {
       user.refreshToken = null;
       await user.save();
+      console.log(`✅ User logged out: ${user.email}`);
     }
 
     res.json({
@@ -246,8 +352,15 @@ const logout = async (req, res) => {
 // Get current user profile
 const getProfile = async (req, res) => {
   try {
-    const user = await User.findById(req.user._id);
+    const user = await User.findById(req.user._id).select('-password -refreshToken');
     
+    if (!user) {
+      return res.status(404).json({
+        success: false,
+        message: 'User not found'
+      });
+    }
+
     let profileData = {
       user: {
         id: user._id,
@@ -267,13 +380,19 @@ const getProfile = async (req, res) => {
     // Add role-specific data
     if (user.role === 'student') {
       const student = await Student.findOne({ user: user._id })
-        .populate('enrolledCourses.course')
-        .populate('batches');
-      profileData.studentProfile = student;
+        .populate('enrolledCourses.course', 'name fees duration')
+        .populate('batches', 'name course startDate endDate');
+      
+      if (student) {
+        profileData.studentProfile = student;
+      }
     } else if (user.role === 'instructor') {
       const instructor = await Instructor.findOne({ user: user._id })
-        .populate('skills');
-      profileData.instructorProfile = instructor;
+        .populate('skills', 'name category');
+      
+      if (instructor) {
+        profileData.instructorProfile = instructor;
+      }
     }
 
     res.json({
@@ -303,12 +422,14 @@ const updateProfile = async (req, res) => {
     }
 
     // Update user fields
-    if (firstName) user.firstName = firstName;
-    if (lastName) user.lastName = lastName;
-    if (phone) user.phone = phone;
-    if (whatsapp) user.whatsapp = whatsapp;
+    if (firstName) user.firstName = firstName.trim();
+    if (lastName) user.lastName = lastName.trim();
+    if (phone) user.phone = cleanPhoneNumber(phone);
+    if (whatsapp) user.whatsapp = cleanPhoneNumber(whatsapp);
 
     await user.save();
+
+    console.log(`✅ Profile updated: ${user.email}`);
 
     res.json({
       success: true,
@@ -357,13 +478,25 @@ const changePassword = async (req, res) => {
       });
     }
 
+    // Check if new password is different
+    const isSamePassword = await user.comparePassword(newPassword);
+    if (isSamePassword) {
+      return res.status(400).json({
+        success: false,
+        message: 'New password must be different from current password'
+      });
+    }
+
     // Update password
     user.password = newPassword;
+    user.refreshToken = null; // Invalidate all sessions
     await user.save();
+
+    console.log(`✅ Password changed: ${user.email}`);
 
     res.json({
       success: true,
-      message: 'Password changed successfully'
+      message: 'Password changed successfully. Please login again with your new password.'
     });
   } catch (error) {
     console.error('Change password error:', error);
@@ -379,11 +512,14 @@ const forgotPassword = async (req, res) => {
   try {
     const { email } = req.body;
 
-    const user = await User.findOne({ email });
+    const normalizedEmail = email.toLowerCase().trim();
+    const user = await User.findOne({ email: normalizedEmail });
+    
     if (!user) {
-      return res.status(404).json({
-        success: false,
-        message: 'No user found with this email address'
+      // Don't reveal if user exists for security
+      return res.json({
+        success: true,
+        message: 'If an account with that email exists, a password reset link has been sent.'
       });
     }
 
@@ -398,13 +534,16 @@ const forgotPassword = async (req, res) => {
     user.resetPasswordExpires = Date.now() + 3600000; // 1 hour
     await user.save();
 
+    console.log(`🔑 Password reset requested: ${normalizedEmail}`);
+
     // Send reset email
     try {
       await emailService.sendPasswordResetEmail(user.email, user.firstName, resetToken);
+      console.log(`✅ Password reset email sent to ${normalizedEmail}`);
       
       res.json({
         success: true,
-        message: 'Password reset email sent successfully'
+        message: 'Password reset email sent successfully. Please check your inbox.'
       });
     } catch (emailError) {
       console.error('Failed to send reset email:', emailError);
@@ -416,7 +555,7 @@ const forgotPassword = async (req, res) => {
       
       res.status(500).json({
         success: false,
-        message: 'Failed to send password reset email'
+        message: 'Failed to send password reset email. Please try again later.'
       });
     }
   } catch (error) {
@@ -433,16 +572,19 @@ const resetPassword = async (req, res) => {
   try {
     const { token, newPassword } = req.body;
 
+    // Hash the token to compare with stored hash
+    const hashedToken = crypto.createHash('sha256').update(token).digest('hex');
+
     // Find user with valid reset token
     const user = await User.findOne({
-      resetPasswordToken: token,
+      resetPasswordToken: hashedToken,
       resetPasswordExpires: { $gt: Date.now() }
     });
 
     if (!user) {
       return res.status(400).json({
         success: false,
-        message: 'Invalid or expired reset token'
+        message: 'Invalid or expired reset token. Please request a new password reset link.'
       });
     }
 
@@ -452,6 +594,8 @@ const resetPassword = async (req, res) => {
     user.resetPasswordExpires = null;
     user.refreshToken = null; // Invalidate existing sessions
     await user.save();
+
+    console.log(`✅ Password reset successful: ${user.email}`);
 
     // Send confirmation email
     try {
@@ -463,7 +607,7 @@ const resetPassword = async (req, res) => {
 
     res.json({
       success: true,
-      message: 'Password reset successfully'
+      message: 'Password reset successfully. You can now login with your new password.'
     });
   } catch (error) {
     console.error('Reset password error:', error);
@@ -504,7 +648,10 @@ const validateResetToken = async (req, res) => {
 
     res.status(200).json({
       success: true,
-      message: 'Token is valid'
+      message: 'Token is valid',
+      data: {
+        email: user.email
+      }
     });
   } catch (error) {
     console.error('Validate reset token error:', error);

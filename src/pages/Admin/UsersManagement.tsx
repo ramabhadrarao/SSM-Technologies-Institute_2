@@ -20,7 +20,10 @@ import {
   GraduationCap,
   BookOpen,
   ChevronLeft,
-  ChevronRight
+  ChevronRight,
+  Clock,
+  AlertCircle,
+  UserCheck
 } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { useAuth } from '../../contexts/AuthContext';
@@ -43,7 +46,12 @@ interface User {
   createdAt: string;
   profileImageUrl?: string;
   studentProfile?: any;
-  instructorProfile?: any;
+  instructorProfile?: {
+    isApproved: boolean;
+    designation?: string;
+    experience?: number;
+    bio?: string;
+  };
 }
 
 interface UserFormData {
@@ -72,6 +80,9 @@ const AdminUsersManagement: React.FC = () => {
   const [actionLoading, setActionLoading] = useState<string | null>(null);
   const [userStats, setUserStats] = useState<any>(null);
   const [showUserForm, setShowUserForm] = useState(false);
+  const [approvingInstructor, setApprovingInstructor] = useState<string | null>(null);
+  const [showApprovalModal, setShowApprovalModal] = useState(false);
+  const [selectedInstructor, setSelectedInstructor] = useState<User | null>(null);
   const [userFormData, setUserFormData] = useState<UserFormData>({
     email: '',
     password: '',
@@ -161,6 +172,55 @@ const AdminUsersManagement: React.FC = () => {
     } finally {
       setActionLoading(null);
     }
+  };
+
+  const handleApproveInstructor = async (userId: string, approve: boolean) => {
+    try {
+      setApprovingInstructor(userId);
+      
+      // Find the instructor in the users list
+      const instructor = users.find(u => u._id === userId);
+      if (!instructor || !instructor.instructorProfile) {
+        toast.error('Instructor profile not found');
+        return;
+      }
+
+      // Update instructor approval status
+      await apiClient.updateUser(userId, {
+        // We need to use a custom endpoint for this
+        // For now, we'll need to add this to the backend
+      });
+
+      // Temporary solution: Make a direct API call
+      const response = await fetch(`${apiClient.getApiBaseUrl()}/admin/users/${userId}/approve-instructor`, {
+        method: 'PATCH',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${apiClient.getToken()}`
+        },
+        body: JSON.stringify({ isApproved: approve })
+      });
+
+      if (!response.ok) {
+        throw new Error('Failed to update instructor approval status');
+      }
+
+      toast.success(approve ? 'Instructor approved successfully' : 'Instructor approval revoked');
+      setShowApprovalModal(false);
+      setSelectedInstructor(null);
+      fetchUsers();
+      fetchUserStats();
+    } catch (error: any) {
+      console.error('Error approving instructor:', error);
+      toast.error(error.message || `Failed to ${approve ? 'approve' : 'revoke'} instructor`);
+    } finally {
+      setApprovingInstructor(null);
+    }
+  };
+
+  const openApprovalModal = (instructor: User) => {
+    setSelectedInstructor(instructor);
+    setShowApprovalModal(true);
   };
 
   const handleBulkAction = async (action: 'activate' | 'deactivate' | 'delete') => {
@@ -566,11 +626,28 @@ const AdminUsersManagement: React.FC = () => {
                           </div>
                         </td>
                         <td className="px-6 py-4">
-                          <div className="flex items-center">
-                            {getRoleIcon(userData.role)}
-                            <span className={`ml-2 inline-flex px-2 py-1 text-xs font-semibold rounded-full ${getRoleBadgeColor(userData.role)}`}>
-                              {userData.role}
-                            </span>
+                          <div className="flex flex-col space-y-2">
+                            <div className="flex items-center">
+                              {getRoleIcon(userData.role)}
+                              <span className={`ml-2 inline-flex px-2 py-1 text-xs font-semibold rounded-full ${getRoleBadgeColor(userData.role)}`}>
+                                {userData.role}
+                              </span>
+                            </div>
+                            {userData.role === 'instructor' && userData.instructorProfile && (
+                              <div className="flex items-center">
+                                {userData.instructorProfile.isApproved ? (
+                                  <span className="inline-flex items-center px-2 py-1 text-xs font-semibold rounded-full bg-green-100 text-green-800">
+                                    <CheckCircle className="w-3 h-3 mr-1" />
+                                    Approved
+                                  </span>
+                                ) : (
+                                  <span className="inline-flex items-center px-2 py-1 text-xs font-semibold rounded-full bg-yellow-100 text-yellow-800">
+                                    <Clock className="w-3 h-3 mr-1" />
+                                    Pending
+                                  </span>
+                                )}
+                              </div>
+                            )}
                           </div>
                         </td>
                         <td className="px-6 py-4">
@@ -590,6 +667,15 @@ const AdminUsersManagement: React.FC = () => {
                         </td>
                         <td className="px-6 py-4 text-sm font-medium">
                           <div className="flex items-center space-x-2">
+                            {userData.role === 'instructor' && userData.instructorProfile && !userData.instructorProfile.isApproved && (
+                              <button
+                                onClick={() => openApprovalModal(userData)}
+                                className="text-green-600 hover:text-green-900"
+                                title="Approve Instructor"
+                              >
+                                <UserCheck className="w-4 h-4" />
+                              </button>
+                            )}
                             <button
                               onClick={() => openEditModal(userData)}
                               className="text-blue-600 hover:text-blue-900"
@@ -850,6 +936,73 @@ const AdminUsersManagement: React.FC = () => {
                 </Button>
               </div>
             </form>
+          </div>
+        </div>
+      )}
+
+      {/* Instructor Approval Modal */}
+      {showApprovalModal && selectedInstructor && (
+        <div className="fixed inset-0 bg-gray-500 bg-opacity-75 flex items-center justify-center p-4 z-50">
+          <div className="bg-white rounded-lg shadow-xl max-w-md w-full">
+            <div className="px-6 py-4 border-b border-gray-200">
+              <h3 className="text-lg font-medium text-gray-900">
+                Instructor Approval
+              </h3>
+            </div>
+            
+            <div className="p-6">
+              <div className="flex items-center mb-4">
+                <div className="flex-shrink-0 h-12 w-12">
+                  <div className="h-12 w-12 rounded-full bg-gradient-to-r from-blue-500 to-purple-500 flex items-center justify-center">
+                    <span className="text-white font-medium text-lg">
+                      {selectedInstructor.firstName.charAt(0)}{selectedInstructor.lastName.charAt(0)}
+                    </span>
+                  </div>
+                </div>
+                <div className="ml-4">
+                  <div className="text-lg font-medium text-gray-900">
+                    {selectedInstructor.firstName} {selectedInstructor.lastName}
+                  </div>
+                  <div className="text-sm text-gray-500">
+                    {selectedInstructor.email}
+                  </div>
+                </div>
+              </div>
+
+              <p className="text-gray-600 mb-6">
+                Do you want to approve this instructor? Once approved, they will be able to access the full instructor dashboard and be assigned to courses.
+              </p>
+
+              <div className="flex justify-end space-x-3">
+                <Button
+                  type="button"
+                  variant="outline"
+                  onClick={() => {
+                    setShowApprovalModal(false);
+                    setSelectedInstructor(null);
+                  }}
+                  disabled={approvingInstructor === selectedInstructor._id}
+                >
+                  Cancel
+                </Button>
+                <Button
+                  type="button"
+                  variant="outline"
+                  onClick={() => handleApproveInstructor(selectedInstructor._id, false)}
+                  loading={approvingInstructor === selectedInstructor._id}
+                  className="text-red-600 border-red-300 hover:bg-red-50"
+                >
+                  Reject
+                </Button>
+                <Button
+                  type="button"
+                  onClick={() => handleApproveInstructor(selectedInstructor._id, true)}
+                  loading={approvingInstructor === selectedInstructor._id}
+                >
+                  Approve
+                </Button>
+              </div>
+            </div>
           </div>
         </div>
       )}

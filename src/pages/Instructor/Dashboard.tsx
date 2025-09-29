@@ -12,7 +12,10 @@ import {
   MessageSquare,
   BarChart3,
   ExternalLink,
-  ChevronRight
+  ChevronRight,
+  AlertCircle,
+  CheckCircle,
+  XCircle
 } from 'lucide-react';
 import { useAuth } from '../../contexts/AuthContext';
 import { apiClient } from '../../lib/api';
@@ -27,6 +30,8 @@ interface InstructorDashboardData {
     experience: number;
     rating: number;
     totalStudents: number;
+    isApproved?: boolean;
+    bio?: string;
   };
   stats: {
     totalCourses: number;
@@ -60,9 +65,11 @@ interface InstructorDashboardData {
 }
 
 const InstructorDashboard: React.FC = () => {
-  const { user } = useAuth();
+  const { user, refreshUser } = useAuth();
   const [instructorData, setInstructorData] = useState<InstructorDashboardData | null>(null);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+  const [isApproved, setIsApproved] = useState<boolean | null>(null);
 
   useEffect(() => {
     fetchInstructorData();
@@ -71,11 +78,79 @@ const InstructorDashboard: React.FC = () => {
   const fetchInstructorData = async () => {
     try {
       setLoading(true);
+      setError(null);
+
+      // First, get the user profile to check approval status
+      const profile = await apiClient.getProfile();
+      
+      if (profile.instructorProfile) {
+        const approved = profile.instructorProfile.isApproved;
+        setIsApproved(approved);
+
+        if (!approved) {
+          // If not approved, create mock data structure
+          setInstructorData({
+            instructor: {
+              name: `${profile.user.firstName} ${profile.user.lastName}`,
+              designation: profile.instructorProfile.designation || 'Instructor',
+              experience: profile.instructorProfile.experience || 0,
+              rating: 0,
+              totalStudents: 0,
+              isApproved: false,
+              bio: profile.instructorProfile.bio || ''
+            },
+            stats: {
+              totalCourses: 0,
+              totalBatches: 0,
+              totalStudents: 0,
+              avgRating: 0
+            },
+            courses: [],
+            upcomingClasses: [],
+            batches: []
+          });
+          setLoading(false);
+          return;
+        }
+      }
+
+      // If approved, fetch full dashboard data
       const data = await apiClient.getInstructorDashboard();
       setInstructorData(data);
+      setIsApproved(true);
     } catch (error: any) {
       console.error('Error fetching instructor dashboard data:', error);
-      toast.error('Failed to load dashboard data');
+      setError(error.message || 'Failed to load dashboard data');
+      
+      // Try to get basic profile info even if dashboard fails
+      try {
+        const profile = await apiClient.getProfile();
+        if (profile.instructorProfile) {
+          setIsApproved(profile.instructorProfile.isApproved);
+          setInstructorData({
+            instructor: {
+              name: `${profile.user.firstName} ${profile.user.lastName}`,
+              designation: profile.instructorProfile.designation || 'Instructor',
+              experience: profile.instructorProfile.experience || 0,
+              rating: 0,
+              totalStudents: 0,
+              isApproved: profile.instructorProfile.isApproved,
+              bio: profile.instructorProfile.bio || ''
+            },
+            stats: {
+              totalCourses: 0,
+              totalBatches: 0,
+              totalStudents: 0,
+              avgRating: 0
+            },
+            courses: [],
+            upcomingClasses: [],
+            batches: []
+          });
+        }
+      } catch (profileError) {
+        console.error('Error fetching profile:', profileError);
+      }
     } finally {
       setLoading(false);
     }
@@ -111,11 +186,158 @@ const InstructorDashboard: React.FC = () => {
     );
   }
 
+  // Show pending approval screen
+  if (isApproved === false) {
+    return (
+      <div className="min-h-screen bg-gray-50">
+        <div className="bg-white shadow-sm border-b">
+          <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
+            <h1 className="text-2xl font-bold text-gray-900">Instructor Dashboard</h1>
+            <p className="text-gray-600">Welcome, {user?.firstName}!</p>
+          </div>
+        </div>
+
+        <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
+          <Card className="p-8">
+            <div className="text-center">
+              <div className="mx-auto flex items-center justify-center h-16 w-16 rounded-full bg-yellow-100 mb-4">
+                <Clock className="h-8 w-8 text-yellow-600" />
+              </div>
+              <h2 className="text-2xl font-bold text-gray-900 mb-2">
+                Account Pending Approval
+              </h2>
+              <p className="text-gray-600 mb-6 max-w-2xl mx-auto">
+                Thank you for registering as an instructor! Your profile is currently under review by our admin team. 
+                This process typically takes 24-48 hours.
+              </p>
+
+              <div className="bg-blue-50 border border-blue-200 rounded-lg p-6 mb-6 text-left">
+                <h3 className="font-semibold text-blue-900 mb-3 flex items-center">
+                  <AlertCircle className="w-5 h-5 mr-2" />
+                  What happens next?
+                </h3>
+                <ul className="space-y-2 text-sm text-blue-800">
+                  <li className="flex items-start">
+                    <CheckCircle className="w-4 h-4 mr-2 mt-0.5 flex-shrink-0" />
+                    <span>Our team will review your credentials and profile information</span>
+                  </li>
+                  <li className="flex items-start">
+                    <CheckCircle className="w-4 h-4 mr-2 mt-0.5 flex-shrink-0" />
+                    <span>You'll receive an email notification once your account is approved</span>
+                  </li>
+                  <li className="flex items-start">
+                    <CheckCircle className="w-4 h-4 mr-2 mt-0.5 flex-shrink-0" />
+                    <span>After approval, you can create courses and manage batches</span>
+                  </li>
+                </ul>
+              </div>
+
+              <div className="bg-gray-50 border border-gray-200 rounded-lg p-6 mb-6 text-left">
+                <h3 className="font-semibold text-gray-900 mb-3">
+                  While You Wait
+                </h3>
+                <div className="space-y-3">
+                  <Link
+                    to="/profile"
+                    className="flex items-center justify-between p-3 bg-white border border-gray-200 rounded-lg hover:border-blue-300 hover:shadow-sm transition-all"
+                  >
+                    <div className="flex items-center">
+                      <Users className="w-5 h-5 text-blue-600 mr-3" />
+                      <div>
+                        <p className="font-medium text-gray-900">Complete Your Profile</p>
+                        <p className="text-sm text-gray-600">Add your bio, experience, and qualifications</p>
+                      </div>
+                    </div>
+                    <ChevronRight className="w-5 h-5 text-gray-400" />
+                  </Link>
+
+                  <Link
+                    to="/courses"
+                    className="flex items-center justify-between p-3 bg-white border border-gray-200 rounded-lg hover:border-blue-300 hover:shadow-sm transition-all"
+                  >
+                    <div className="flex items-center">
+                      <BookOpen className="w-5 h-5 text-blue-600 mr-3" />
+                      <div>
+                        <p className="font-medium text-gray-900">Explore Courses</p>
+                        <p className="text-sm text-gray-600">See what other instructors are teaching</p>
+                      </div>
+                    </div>
+                    <ChevronRight className="w-5 h-5 text-gray-400" />
+                  </Link>
+
+                  <a
+                    href="mailto:info@ssmtechnologies.co.in"
+                    className="flex items-center justify-between p-3 bg-white border border-gray-200 rounded-lg hover:border-blue-300 hover:shadow-sm transition-all"
+                  >
+                    <div className="flex items-center">
+                      <MessageSquare className="w-5 h-5 text-blue-600 mr-3" />
+                      <div>
+                        <p className="font-medium text-gray-900">Contact Support</p>
+                        <p className="text-sm text-gray-600">Have questions? We're here to help</p>
+                      </div>
+                    </div>
+                    <ExternalLink className="w-5 h-5 text-gray-400" />
+                  </a>
+                </div>
+              </div>
+
+              <div className="flex justify-center space-x-4">
+                <button
+                  onClick={fetchInstructorData}
+                  className="inline-flex items-center px-4 py-2 border border-gray-300 rounded-md shadow-sm text-sm font-medium text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
+                >
+                  Refresh Status
+                </button>
+                <Link
+                  to="/profile"
+                  className="inline-flex items-center px-4 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
+                >
+                  Complete Profile
+                </Link>
+              </div>
+
+              <p className="text-sm text-gray-500 mt-6">
+                Need immediate assistance? Contact us at{' '}
+                <a href="mailto:info@ssmtechnologies.co.in" className="text-blue-600 hover:text-blue-800">
+                  info@ssmtechnologies.co.in
+                </a>
+                {' '}or call{' '}
+                <a href="tel:+919876543210" className="text-blue-600 hover:text-blue-800">
+                  +91 98765 43210
+                </a>
+              </p>
+            </div>
+          </Card>
+        </div>
+      </div>
+    );
+  }
+
+  if (error && !instructorData) {
+    return (
+      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+        <div className="text-center max-w-md">
+          <div className="mx-auto flex items-center justify-center h-16 w-16 rounded-full bg-red-100 mb-4">
+            <XCircle className="h-8 w-8 text-red-600" />
+          </div>
+          <h2 className="text-xl font-bold text-gray-900 mb-2">Unable to Load Dashboard</h2>
+          <p className="text-gray-600 mb-4">{error}</p>
+          <button 
+            onClick={fetchInstructorData}
+            className="inline-flex items-center px-4 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-blue-600 hover:bg-blue-700"
+          >
+            Try Again
+          </button>
+        </div>
+      </div>
+    );
+  }
+
   if (!instructorData) {
     return (
       <div className="min-h-screen bg-gray-50 flex items-center justify-center">
         <div className="text-center">
-          <p className="text-gray-600">Failed to load dashboard data</p>
+          <p className="text-gray-600">No dashboard data available</p>
           <button 
             onClick={fetchInstructorData}
             className="mt-4 text-blue-600 hover:text-blue-800"
@@ -217,16 +439,13 @@ const InstructorDashboard: React.FC = () => {
                 <div className="text-center py-8">
                   <BookOpen className="w-12 h-12 text-gray-400 mx-auto mb-4" />
                   <p className="text-gray-600 mb-4">You don't have any courses assigned yet.</p>
-                  <Link
-                    to="/instructor/courses/create"
-                    className="inline-flex items-center text-blue-600 hover:text-blue-800"
-                  >
-                    Create Course <ExternalLink className="w-4 h-4 ml-1" />
-                  </Link>
+                  <p className="text-sm text-gray-500 mb-4">
+                    Once your account is approved, you can create and manage courses.
+                  </p>
                 </div>
               ) : (
                 <div className="space-y-4">
-{instructorData.courses.map((course) => (
+                  {instructorData.courses.map((course) => (
                     <div key={course.id} className="border border-gray-200 rounded-lg p-4 hover:shadow-md transition-shadow">
                       <div className="flex items-start justify-between mb-3">
                         <div className="flex-1">
@@ -326,6 +545,13 @@ const InstructorDashboard: React.FC = () => {
                 <p className="text-xs text-gray-500 mt-2">
                   Teaching {instructorData.instructor.totalStudents} students
                 </p>
+                
+                {isApproved && (
+                  <div className="mt-3 inline-flex items-center px-3 py-1 rounded-full text-xs font-medium bg-green-100 text-green-800">
+                    <CheckCircle className="w-3 h-3 mr-1" />
+                    Approved Instructor
+                  </div>
+                )}
               </div>
             </Card>
 
@@ -368,18 +594,11 @@ const InstructorDashboard: React.FC = () => {
               <h3 className="text-lg font-semibold text-gray-900 mb-4">Quick Actions</h3>
               <div className="space-y-2">
                 <Link
-                  to="/instructor/courses/create"
-                  className="flex items-center w-full text-left px-3 py-2 text-sm text-blue-600 hover:bg-blue-50 rounded-lg transition-colors"
-                >
-                  <BookOpen className="w-4 h-4 mr-2" />
-                  Create New Course
-                </Link>
-                <Link
-                  to="/instructor/batches/create"
+                  to="/profile"
                   className="flex items-center w-full text-left px-3 py-2 text-sm text-gray-700 hover:bg-gray-50 rounded-lg transition-colors"
                 >
                   <Users className="w-4 h-4 mr-2" />
-                  Create New Batch
+                  Update Profile
                 </Link>
                 <Link
                   to="/instructor/schedule"
@@ -389,18 +608,11 @@ const InstructorDashboard: React.FC = () => {
                   View Schedule
                 </Link>
                 <Link
-                  to="/instructor/students"
+                  to="/courses"
                   className="flex items-center w-full text-left px-3 py-2 text-sm text-gray-700 hover:bg-gray-50 rounded-lg transition-colors"
                 >
-                  <Users className="w-4 h-4 mr-2" />
-                  Manage Students
-                </Link>
-                <Link
-                  to="/instructor/reports"
-                  className="flex items-center w-full text-left px-3 py-2 text-sm text-gray-700 hover:bg-gray-50 rounded-lg transition-colors"
-                >
-                  <BarChart3 className="w-4 h-4 mr-2" />
-                  View Reports
+                  <BookOpen className="w-4 h-4 mr-2" />
+                  Browse Courses
                 </Link>
               </div>
             </Card>
@@ -425,14 +637,6 @@ const InstructorDashboard: React.FC = () => {
                 <div className="flex justify-between items-center">
                   <span className="text-sm text-gray-600">Active Batches</span>
                   <span className="font-medium text-green-600">{instructorData.stats.totalBatches}</span>
-                </div>
-                <div className="pt-3 border-t">
-                  <Link
-                    to="/instructor/analytics"
-                    className="text-blue-600 hover:text-blue-800 text-sm font-medium flex items-center"
-                  >
-                    View Detailed Analytics <TrendingUp className="w-4 h-4 ml-1" />
-                  </Link>
                 </div>
               </div>
             </Card>

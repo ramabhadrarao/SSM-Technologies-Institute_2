@@ -15,7 +15,8 @@ const {
   deleteUser,
   toggleUserStatus,
   bulkUpdateUsers,
-  getUserStats
+  getUserStats,
+  approveInstructor
 } = require('../controllers/adminController');
 
 const {
@@ -108,6 +109,7 @@ router.post('/users', rateLimiters.general, validate(registerSchema), createUser
 router.put('/users/:id', rateLimiters.general, updateUser);
 router.delete('/users/:id', rateLimiters.general, deleteUser);
 router.patch('/users/:id/toggle-status', rateLimiters.general, toggleUserStatus);
+router.patch('/users/:id/approve-instructor', rateLimiters.general, approveInstructor);
 router.patch('/users/bulk-update', rateLimiters.general, bulkUpdateUsers);
 
 // ========== COURSE MANAGEMENT ROUTES ==========
