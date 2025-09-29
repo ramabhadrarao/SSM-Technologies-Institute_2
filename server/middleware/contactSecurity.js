@@ -156,78 +156,7 @@ const enhancedContactRateLimit = async (req, res, next) => {
 
 // CAPTCHA validation (server-side verification)
 // CAPTCHA validation (server-side verification)
-const validateCaptcha = async (req, res, next) => {
-  const { captchaToken } = req.body;
-  
-  if (!captchaToken) {
-    return res.status(400).json({
-      success: false,
-      message: 'CAPTCHA verification is required'
-    });
-  }
-  
-  try {
-    // Verify reCAPTCHA with Google
-    const secretKey = process.env.RECAPTCHA_SECRET_KEY;
-    if (!secretKey) {
-      console.error('❌ reCAPTCHA secret key not configured');
-      // In development, you might want to skip CAPTCHA
-      if (process.env.NODE_ENV === 'development') {
-        console.warn('⚠️ CAPTCHA verification skipped in development mode');
-        return next();
-      }
-      return res.status(500).json({
-        success: false,
-        message: 'CAPTCHA verification service unavailable'
-      });
-    }
-    
-    const verificationURL = `https://www.google.com/recaptcha/api/siteverify`;
-    const response = await fetch(verificationURL, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/x-www-form-urlencoded',
-      },
-      body: `secret=${secretKey}&response=${captchaToken}&remoteip=${req.ip}`
-    });
-    
-    const verificationResult = await response.json();
-    
-    console.log('CAPTCHA verification result:', verificationResult); // Debug log
-    
-    if (!verificationResult.success) {
-      console.log(`🚨 CAPTCHA verification failed from IP: ${req.ip}`);
-      console.log('Error codes:', verificationResult['error-codes']);
-      
-      // Log suspicious activity
-      contactRateLimiters.suspicious.consume(req.ip).catch(() => {});
-      
-      return res.status(400).json({
-        success: false,
-        message: 'CAPTCHA verification failed. Please try again.'
-      });
-    }
-    
-    // Check CAPTCHA score (v3 only, v2 doesn't have score)
-    if (verificationResult.score && verificationResult.score < 0.5) {
-      console.log(`🚨 Low CAPTCHA score from IP: ${req.ip}, Score: ${verificationResult.score}`);
-      
-      return res.status(400).json({
-        success: false,
-        message: 'Security verification failed. Please try again.'
-      });
-    }
-    
-    console.log('✅ CAPTCHA verified successfully');
-    next();
-  } catch (error) {
-    console.error('CAPTCHA verification error:', error);
-    return res.status(500).json({
-      success: false,
-      message: 'CAPTCHA verification service error'
-    });
-  }
-};
+
 // Alternative CAPTCHA validation (for when reCAPTCHA is not available)
 const validateAlternativeCaptcha = (req, res, next) => {
   const { captchaToken } = req.body;
