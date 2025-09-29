@@ -116,6 +116,53 @@ const uploadConfigs = {
       fileSize: parseInt(process.env.MAX_FILE_SIZE) || 10485760,
     },
     fileFilter: fileFilter(['jpg', 'jpeg', 'png'])
+  }),
+
+  // Mixed configuration for instructor profile with different file types per field
+  instructorProfile: multer({
+    storage: multer.diskStorage({
+      destination: (req, file, cb) => {
+        let uploadPath;
+        if (file.fieldname === 'profileImage') {
+          uploadPath = uploadPaths.profiles;
+        } else if (file.fieldname === 'resume') {
+          uploadPath = uploadPaths.resumes;
+        } else if (file.fieldname === 'certificates') {
+          uploadPath = uploadPaths.certificates;
+        } else {
+          uploadPath = uploadPaths.profiles; // default
+        }
+        ensureDirectoryExists(uploadPath);
+        cb(null, uploadPath);
+      },
+      filename: (req, file, cb) => {
+        const uniqueName = `${uuidv4()}-${Date.now()}${path.extname(file.originalname)}`;
+        cb(null, uniqueName);
+      }
+    }),
+    limits: {
+      fileSize: parseInt(process.env.MAX_FILE_SIZE) || 10485760,
+    },
+    fileFilter: (req, file, cb) => {
+      let allowedTypes;
+      if (file.fieldname === 'profileImage') {
+        allowedTypes = ['jpg', 'jpeg', 'png'];
+      } else if (file.fieldname === 'resume') {
+        allowedTypes = ['pdf', 'doc', 'docx'];
+      } else if (file.fieldname === 'certificates') {
+        allowedTypes = ['jpg', 'jpeg', 'png', 'pdf'];
+      } else {
+        allowedTypes = ['jpg', 'jpeg', 'png']; // default
+      }
+      
+      const fileExtension = path.extname(file.originalname).toLowerCase().slice(1);
+      
+      if (allowedTypes.includes(fileExtension)) {
+        cb(null, true);
+      } else {
+        cb(new Error(`Invalid file type for ${file.fieldname}. Allowed types: ${allowedTypes.join(', ')}`), false);
+      }
+    }
   })
 };
 

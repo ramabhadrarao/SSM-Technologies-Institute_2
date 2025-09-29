@@ -4,6 +4,8 @@ import { Toaster } from 'react-hot-toast';
 import { AuthProvider } from './contexts/AuthContext';
 import Header from './components/Layout/Header';
 import Footer from './components/Layout/Footer';
+import ErrorBoundary from './components/Layout/ErrorBoundary';
+import RouteGuard from './components/Layout/RouteGuard';
 
 // Public Pages
 import Home from './pages/Home';
@@ -16,6 +18,7 @@ import Login from './pages/Auth/Login';
 import Register from './pages/Auth/Register';
 import ForgotPassword from './pages/Auth/ForgotPassword';
 import ResetPassword from './pages/Auth/ResetPassword';
+import UnderDevelopment from './pages/UnderDevelopment';
 
 // Dashboard Pages
 import AdminDashboard from './pages/Admin/Dashboard';
@@ -38,35 +41,43 @@ function App() {
         <div className="min-h-screen flex flex-col">
           <Header />
           <main className="flex-1">
-            <Routes>
-              {/* Public Routes */}
-              <Route path="/" element={<Home />} />
-              <Route path="/courses" element={<Courses />} />
-              <Route path="/courses/:id" element={<CourseDetail />} />
-              <Route path="/subjects" element={<Subjects />} />
-              <Route path="/about" element={<About />} />
-              <Route path="/contact" element={<Contact />} />
-              <Route path="/login" element={<Login />} />
-              <Route path="/register" element={<Register />} />
-              <Route path="/forgot-password" element={<ForgotPassword />} />
-              <Route path="/reset-password/:token" element={<ResetPassword />} />
-              
-              {/* Admin Routes */}
-              <Route path="/admin/dashboard" element={<AdminDashboard />} />
-              <Route path="/admin/users" element={<AdminUsersManagement />} />
-              <Route path="/admin/courses" element={<AdminCoursesManagement />} />
-              <Route path="/admin/subjects" element={<AdminSubjectsManagement />} />
-              <Route path="/admin/batches" element={<AdminBatchesManagement />} />
-              <Route path="/admin/team" element={<AdminTeamManagement />} />
-              <Route path="/admin/messages" element={<AdminMessagesManagement />} />
-              <Route path="/admin/reports" element={<AdminReportsAnalytics />} />
-              <Route path="/admin/settings" element={<AdminSystemSettings />} />
-              
-              {/* Student & Instructor Routes */}
-              <Route path="/student/dashboard" element={<StudentDashboard />} />
-              <Route path="/instructor/dashboard" element={<InstructorDashboard />} />
-              <Route path="/instructor/profile" element={<InstructorProfile />} />
-            </Routes>
+            <ErrorBoundary>
+              <Routes>
+                {/* Public Routes */}
+                <Route path="/" element={<Home />} />
+                <Route path="/courses" element={<Courses />} />
+                <Route path="/courses/:id" element={<CourseDetail />} />
+                <Route path="/subjects" element={<Subjects />} />
+                <Route path="/about" element={<About />} />
+                <Route path="/contact" element={<Contact />} />
+                <Route path="/login" element={<Login />} />
+                <Route path="/register" element={<Register />} />
+                <Route path="/forgot-password" element={<ForgotPassword />} />
+                <Route path="/reset-password/:token" element={<ResetPassword />} />
+                
+                {/* Under Development Route */}
+                <Route path="/under-development" element={<UnderDevelopment />} />
+                
+                {/* Admin Routes */}
+                <Route path="/admin/dashboard" element={<AdminDashboard />} />
+                <Route path="/admin/users" element={<AdminUsersManagement />} />
+                <Route path="/admin/courses" element={<AdminCoursesManagement />} />
+                <Route path="/admin/subjects" element={<AdminSubjectsManagement />} />
+                <Route path="/admin/batches" element={<AdminBatchesManagement />} />
+                <Route path="/admin/team" element={<AdminTeamManagement />} />
+                <Route path="/admin/messages" element={<AdminMessagesManagement />} />
+                <Route path="/admin/reports" element={<AdminReportsAnalytics />} />
+                <Route path="/admin/settings" element={<AdminSystemSettings />} />
+                
+                {/* Student & Instructor Routes */}
+                <Route path="/student/dashboard" element={<StudentDashboard />} />
+                <Route path="/instructor/dashboard" element={<InstructorDashboard />} />
+                <Route path="/instructor/profile" element={<InstructorProfile />} />
+                
+                {/* Catch-all route for undefined paths */}
+                <Route path="*" element={<UnderDevelopment />} />
+              </Routes>
+            </ErrorBoundary>
           </main>
           <Footer />
           <Toaster

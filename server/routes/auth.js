@@ -62,7 +62,7 @@ router.post('/change-password',
 
 router.put('/instructor-profile',
   auth,
-  uploadConfigs.profile.fields([
+  uploadConfigs.instructorProfile.fields([
     { name: 'profileImage', maxCount: 1 },
     { name: 'resume', maxCount: 1 },
     { name: 'certificates', maxCount: 10 }
