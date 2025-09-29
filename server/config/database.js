@@ -26,7 +26,7 @@ class DatabaseConnection {
         socketTimeoutMS: 45000,
       };
 
-      const mongoUri = process.env.MONGODB_URI || 'mongodb://localhost:27017/ssm_technologies';
+      const mongoUri = process.env.MONGODB_URI || 'mongodb://localhost:27017/ssm_technologies_latest';
       console.log(`🔗 Connecting to MongoDB: ${mongoUri}`);
       
       await mongoose.connect(mongoUri, options);
