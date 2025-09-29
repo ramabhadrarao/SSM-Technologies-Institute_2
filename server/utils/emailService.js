@@ -123,6 +123,37 @@ class EmailService {
     return await this.sendEmail(userEmail, subject, html);
   }
 
+  async sendReplyEmail(userEmail, userName, replyMessage, originalSubject) {
+    const subject = `Re: ${originalSubject} - SSM Technologies Institute`;
+    const html = `
+      <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
+        <div style="background-color: #3b82f6; color: white; padding: 20px; text-align: center;">
+          <h1>Reply to Your Message</h1>
+        </div>
+        <div style="padding: 20px;">
+          <h2>Hello ${userName}!</h2>
+          <p>Thank you for contacting SSM Technologies Institute. We have received your message and here is our response:</p>
+          <div style="background-color: #f8fafc; border-left: 4px solid #3b82f6; padding: 15px; margin: 20px 0;">
+            <p style="margin: 0; white-space: pre-wrap;">${replyMessage}</p>
+          </div>
+          <p>If you have any additional questions or need further assistance, please don't hesitate to contact us again.</p>
+          <div style="text-align: center; margin: 30px 0;">
+            <a href="${process.env.FRONTEND_URL}/contact" 
+               style="background-color: #3b82f6; color: white; padding: 12px 24px; text-decoration: none; border-radius: 5px; display: inline-block;">
+              Contact Us Again
+            </a>
+          </div>
+          <p>Best regards,<br>SSM Technologies Institute Team</p>
+        </div>
+        <div style="background-color: #f3f4f6; padding: 15px; text-align: center; font-size: 12px; color: #666;">
+          <p>This email was sent in response to your inquiry. If you have additional questions, please feel free to contact us.</p>
+        </div>
+      </div>
+    `;
+
+    return await this.sendEmail(userEmail, subject, html);
+  }
+
   generateResetToken() {
     return crypto.randomBytes(32).toString('hex');
   }

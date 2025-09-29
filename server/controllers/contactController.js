@@ -1,6 +1,7 @@
 // server/controllers/contactController.js
 const ContactMessage = require('../models/ContactMessage');
 const User = require('../models/User');
+const emailService = require('../utils/emailService');
 
 // Get all contact messages for admin
 const getContactMessages = async (req, res) => {
@@ -293,8 +294,20 @@ const replyToMessage = async (req, res) => {
     // Populate the reply for response
     await message.populate('reply.repliedBy', 'firstName lastName email');
 
-    // Here you would typically send an email to the user
-    // await sendReplyEmail(message.email, message.name, replyMessage);
+    // Send email notification to the user
+    try {
+      await emailService.sendReplyEmail(
+        message.email, 
+        message.name, 
+        replyMessage, 
+        message.subject
+      );
+      console.log(`✅ Reply email sent to ${message.email}`);
+    } catch (emailError) {
+      console.error('Failed to send reply email:', emailError);
+      // Don't fail the entire operation if email fails
+      // The reply is still saved to the database
+    }
 
     res.json({
       success: true,
