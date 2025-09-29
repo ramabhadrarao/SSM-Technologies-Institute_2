@@ -5,6 +5,7 @@ const { validate, courseSchema } = require('../middleware/validation');
 const { rateLimiters } = require('../middleware/security');
 const { uploadConfigs, handleUploadError } = require('../middleware/upload');
 const courseController = require('../controllers/courseController');
+const Course = require('../models/Course');
 
 // Public routes
 router.get('/',
