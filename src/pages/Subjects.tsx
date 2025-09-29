@@ -14,12 +14,22 @@ import {
   Filter,
   ChevronRight,
   Download,
-  ExternalLink
+  ExternalLink,
+  ChevronDown,
+  ChevronUp
 } from 'lucide-react';
 import { apiClient } from '../lib/api';
 import { Subject } from '../types';
 import Card from '../components/UI/Card';
 import LoadingSpinner from '../components/UI/LoadingSpinner';
+import { toast } from 'react-hot-toast';
+
+interface PaginationData {
+  current: number;
+  pages: number;
+  total: number;
+  limit: number;
+}
 
 const Subjects: React.FC = () => {
   const [subjects, setSubjects] = useState<Subject[]>([]);
@@ -27,44 +37,65 @@ const Subjects: React.FC = () => {
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedCategory, setSelectedCategory] = useState('all');
   const [expandedSubject, setExpandedSubject] = useState<string | null>(null);
+  const [pagination, setPagination] = useState<PaginationData | null>(null);
+  const [currentPage, setCurrentPage] = useState(1);
 
-  const fetchSubjects = async () => {
+  const fetchSubjects = async (page: number = 1, search?: string) => {
     try {
-      console.log('Subjects: Starting to fetch subjects...');
       setLoading(true);
       const response = await apiClient.getSubjects({
-        page: 1,
-        limit: 50,
+        page,
+        limit: 12,
+        search: search || searchQuery,
         sortBy: 'name',
         sortOrder: 'asc'
       });
-      console.log('Subjects: API response received:', response);
-      setSubjects(response.subjects || []);
-      console.log('Subjects: Set subjects state:', response.subjects || []);
+      
+      // The API client already extracts the data property
+      if (response && response.subjects) {
+        setSubjects(response.subjects || []);
+        setPagination(response.pagination || null);
+      } else {
+        setSubjects([]);
+        setPagination(null);
+      }
     } catch (error) {
-      console.error('Subjects: Error fetching subjects:', error);
+      console.error('Error fetching subjects:', error);
       toast.error('Failed to load subjects');
-      // Don't throw the error, just handle it gracefully
+      setSubjects([]);
+      setPagination(null);
     } finally {
       setLoading(false);
-      console.log('Subjects: Loading complete');
     }
   };
 
   useEffect(() => {
-    console.log('Subjects: Component mounted, calling fetchSubjects');
-    fetchSubjects();
+    fetchSubjects(1);
   }, []);
+
+  useEffect(() => {
+    const delayedSearch = setTimeout(() => {
+      if (searchQuery !== '') {
+        fetchSubjects(1, searchQuery);
+        setCurrentPage(1);
+      } else {
+        fetchSubjects(1);
+        setCurrentPage(1);
+      }
+    }, 500);
+
+    return () => clearTimeout(delayedSearch);
+  }, [searchQuery]);
 
   const getCategoryIcon = (subjectName: string) => {
     const name = subjectName.toLowerCase();
-    if (name.includes('html') || name.includes('css') || name.includes('javascript') || name.includes('react') || name.includes('node') || name.includes('php')) {
+    if (name.includes('html') || name.includes('css') || name.includes('javascript') || name.includes('react') || name.includes('node') || name.includes('php') || name.includes('web') || name.includes('frontend') || name.includes('backend')) {
       return <Code className="w-6 h-6 text-blue-600" />;
-    } else if (name.includes('data') || name.includes('python') || name.includes('machine learning')) {
+    } else if (name.includes('data') || name.includes('python') || name.includes('machine learning') || name.includes('ai') || name.includes('analytics')) {
       return <Database className="w-6 h-6 text-green-600" />;
-    } else if (name.includes('design') || name.includes('ui') || name.includes('ux')) {
+    } else if (name.includes('design') || name.includes('ui') || name.includes('ux') || name.includes('graphic')) {
       return <Palette className="w-6 h-6 text-purple-600" />;
-    } else if (name.includes('marketing') || name.includes('seo')) {
+    } else if (name.includes('marketing') || name.includes('seo') || name.includes('digital') || name.includes('social')) {
       return <TrendingUp className="w-6 h-6 text-orange-600" />;
     } else {
       return <BookOpen className="w-6 h-6 text-gray-600" />;
@@ -72,20 +103,17 @@ const Subjects: React.FC = () => {
   };
 
   const filteredSubjects = subjects.filter(subject => {
-    const matchesSearch = subject.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-                         subject.description.toLowerCase().includes(searchQuery.toLowerCase());
-    
     const matchesCategory = selectedCategory === 'all' || 
                            subject.name.toLowerCase().includes(selectedCategory.toLowerCase());
     
-    return matchesSearch && matchesCategory;
+    return matchesCategory;
   });
 
   const categories = [
     { value: 'all', label: 'All Subjects' },
-    { value: 'programming', label: 'Programming' },
+    { value: 'web', label: 'Web Development' },
     { value: 'data', label: 'Data Science' },
-    { value: 'marketing', label: 'Marketing' },
+    { value: 'marketing', label: 'Digital Marketing' },
     { value: 'design', label: 'Design' },
   ];
 
@@ -116,6 +144,12 @@ const Subjects: React.FC = () => {
     return `${hours}h ${minutes}m`;
   };
 
+  const handlePageChange = (page: number) => {
+    setCurrentPage(page);
+    fetchSubjects(page);
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  };
+
   if (loading) {
     return (
       <div className="min-h-screen bg-gray-50 flex items-center justify-center">
@@ -139,6 +173,11 @@ const Subjects: React.FC = () => {
             <p className="text-xl md:text-2xl opacity-90 max-w-3xl mx-auto">
               Explore detailed curricula and learning materials for all our courses
             </p>
+            {pagination && (
+              <p className="mt-4 text-lg opacity-80">
+                {pagination.total} subjects available
+              </p>
+            )}
           </div>
         </div>
       </div>
@@ -160,12 +199,12 @@ const Subjects: React.FC = () => {
             </div>
 
             {/* Category Filter */}
-            <div className="flex items-center gap-4">
-              <Filter className="w-5 h-5 text-gray-400" />
+            <div className="flex items-center gap-2">
+              <Filter className="w-5 h-5 text-gray-500" />
               <select
                 value={selectedCategory}
                 onChange={(e) => setSelectedCategory(e.target.value)}
-                className="px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
+                className="px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
               >
                 {categories.map(category => (
                   <option key={category.value} value={category.value}>
@@ -183,208 +222,162 @@ const Subjects: React.FC = () => {
         {filteredSubjects.length === 0 ? (
           <div className="text-center py-12">
             <BookOpen className="w-16 h-16 text-gray-400 mx-auto mb-4" />
-            <h3 className="text-xl font-medium text-gray-900 mb-2">
-              {subjects.length === 0 ? 'No Subjects Available' : 'No Subjects Found'}
-            </h3>
-            <p className="text-gray-600">
-              {subjects.length === 0 
-                ? 'Subjects will be available soon.' 
-                : 'Try adjusting your search or filter criteria.'}
+            <h3 className="text-xl font-semibold text-gray-600 mb-2">No subjects found</h3>
+            <p className="text-gray-500">
+              {searchQuery ? 'Try adjusting your search terms' : 'No subjects available at the moment'}
             </p>
           </div>
         ) : (
           <>
-            <div className="mb-6">
-              <p className="text-gray-600">
-                Showing {filteredSubjects.length} of {subjects.length} subjects
-              </p>
-            </div>
-
-            <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
-              {filteredSubjects.map((subject) => (<Card key={subject._id} className="overflow-hidden">
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
+              {filteredSubjects.map((subject) => (
+                <Card key={subject._id} className="h-full" hover>
                   <div className="p-6">
                     {/* Subject Header */}
-                    <div className="flex items-start justify-between mb-4">
-                      <div className="flex items-center space-x-3">
-                        {getCategoryIcon(subject.name)}
-                        <div>
-                          <h3 className="text-xl font-bold text-gray-900">{subject.name}</h3>
-                          {subject.course && (
-                            <p className="text-sm text-blue-600">Part of: {subject.course}</p>
-                          )}
-                        </div>
+                    <div className="flex items-start gap-4 mb-4">
+                      {getCategoryIcon(subject.name)}
+                      <div className="flex-1">
+                        <h3 className="text-xl font-bold text-gray-900 mb-2">
+                          {subject.name}
+                        </h3>
+                        <p className="text-gray-600 text-sm line-clamp-3">
+                          {subject.description}
+                        </p>
                       </div>
-                      <button
-                        onClick={() => setExpandedSubject(expandedSubject === subject._id ? null : subject._id)}
-                        className="text-blue-600 hover:text-blue-800 transition-colors"
-                      >
-                        <ChevronRight 
-                          className={`w-5 h-5 transform transition-transform ${
-                            expandedSubject === subject._id ? 'rotate-90' : ''
-                          }`} 
-                        />
-                      </button>
                     </div>
 
-                    {/* Subject Description */}
-                    <p className="text-gray-600 mb-4 line-clamp-2">{subject.description}</p>
-
                     {/* Subject Stats */}
-                    <div className="flex items-center justify-between text-sm text-gray-500 mb-4">
-                      <div className="flex items-center">
-                        <Clock className="w-4 h-4 mr-1" />
-                        {getTotalDuration(subject.syllabus)}
+                    <div className="flex items-center gap-4 mb-4 text-sm text-gray-500">
+                      <div className="flex items-center gap-1">
+                        <Clock className="w-4 h-4" />
+                        <span>{getTotalDuration(subject.syllabus)}</span>
                       </div>
-                      <div className="flex items-center">
-                        <FileText className="w-4 h-4 mr-1" />
-                        {subject.syllabus?.length || 0} topics
+                      <div className="flex items-center gap-1">
+                        <FileText className="w-4 h-4" />
+                        <span>{subject.syllabus?.length || 0} topics</span>
                       </div>
                       {subject.materials && subject.materials.length > 0 && (
-                        <div className="flex items-center">
-                          <Download className="w-4 h-4 mr-1" />
-                          {subject.materials.length} resources
+                        <div className="flex items-center gap-1">
+                          <Download className="w-4 h-4" />
+                          <span>{subject.materials.length} materials</span>
                         </div>
                       )}
                     </div>
 
-                    {/* Quick Topics Preview */}
+                    {/* Syllabus Preview */}
                     {subject.syllabus && subject.syllabus.length > 0 && (
                       <div className="mb-4">
-                        <h4 className="text-sm font-medium text-gray-700 mb-2">Topics covered:</h4>
-                        <ul className="text-sm text-gray-600 space-y-1">
-                          {subject.syllabus.slice(0, 3).map((item, index) => (
-                            <li key={index} className="flex items-start">
-                              <span className="w-1 h-1 bg-blue-500 rounded-full mt-2 mr-2 flex-shrink-0" />
-                              <span className="line-clamp-1">{item.topic}</span>
-                            </li>
-                          ))}
-                          {subject.syllabus.length > 3 && (
-                            <li className="text-blue-600 text-xs">
-                              +{subject.syllabus.length - 3} more topics
-                            </li>
+                        <button
+                          onClick={() => setExpandedSubject(
+                            expandedSubject === subject._id ? null : subject._id
                           )}
-                        </ul>
+                          className="flex items-center justify-between w-full text-left text-sm font-medium text-gray-700 hover:text-blue-600 transition-colors"
+                        >
+                          <span>Syllabus ({subject.syllabus.length} topics)</span>
+                          {expandedSubject === subject._id ? (
+                            <ChevronUp className="w-4 h-4" />
+                          ) : (
+                            <ChevronDown className="w-4 h-4" />
+                          )}
+                        </button>
+
+                        {expandedSubject === subject._id && (
+                          <div className="mt-3 space-y-2">
+                            {subject.syllabus.slice(0, 5).map((item, index) => (
+                              <div key={index} className="flex items-start gap-2 text-sm">
+                                <div className="w-2 h-2 bg-blue-500 rounded-full mt-2 flex-shrink-0" />
+                                <div>
+                                  <div className="font-medium text-gray-800">{item.topic}</div>
+                                  {item.duration && (
+                                    <div className="text-gray-500 text-xs">{item.duration}</div>
+                                  )}
+                                </div>
+                              </div>
+                            ))}
+                            {subject.syllabus.length > 5 && (
+                              <div className="text-xs text-gray-500 pl-4">
+                                +{subject.syllabus.length - 5} more topics
+                              </div>
+                            )}
+                          </div>
+                        )}
                       </div>
                     )}
 
-                    {/* Expanded Content */}
-                    {expandedSubject === subject._id && (
-                      <div className="border-t pt-4 mt-4">
-                        {/* Detailed Syllabus */}
-                        {subject.syllabus && subject.syllabus.length > 0 && (
-                          <div className="mb-6">
-                            <h4 className="text-lg font-semibold text-gray-900 mb-3">Complete Syllabus</h4>
-                            <div className="space-y-3">
-                              {subject.syllabus.map((item, index) => (
-                                <div key={index} className="bg-gray-50 rounded-lg p-4">
-                                  <div className="flex items-center justify-between mb-2">
-                                    <h5 className="font-medium text-gray-900">{item.topic}</h5>
-                                    {item.duration && (
-                                      <span className="text-xs bg-blue-100 text-blue-800 px-2 py-1 rounded-full">
-                                        {item.duration}
-                                      </span>
-                                    )}
-                                  </div>
-                                  {item.description && (
-                                    <p className="text-sm text-gray-600">{item.description}</p>
-                                  )}
-                                </div>
-                              ))}
+                    {/* Materials */}
+                    {subject.materials && subject.materials.length > 0 && (
+                      <div className="mb-4">
+                        <h4 className="text-sm font-medium text-gray-700 mb-2">Materials</h4>
+                        <div className="space-y-1">
+                          {subject.materials.slice(0, 3).map((material, index) => (
+                            <div key={index} className="flex items-center gap-2 text-sm text-gray-600">
+                              {material.type === 'video' && <PlayCircle className="w-4 h-4" />}
+                              {material.type === 'pdf' && <FileText className="w-4 h-4" />}
+                              {material.type === 'link' && <ExternalLink className="w-4 h-4" />}
+                              {material.type === 'document' && <FileText className="w-4 h-4" />}
+                              <span className="truncate">{material.title}</span>
                             </div>
-                          </div>
-                        )}
-
-                        {/* Learning Materials */}
-                        {subject.materials && subject.materials.length > 0 && (
-                          <div className="mb-6">
-                            <h4 className="text-lg font-semibold text-gray-900 mb-3">Learning Materials</h4>
-                            <div className="space-y-2">
-                              {subject.materials.map((material, index) => (
-                                <div key={index} className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
-                                  <div className="flex items-center">
-                                    {material.type === 'pdf' && <FileText className="w-4 h-4 text-red-500 mr-2" />}
-                                    {material.type === 'video' && <PlayCircle className="w-4 h-4 text-green-500 mr-2" />}
-                                    {material.type === 'link' && <ExternalLink className="w-4 h-4 text-blue-500 mr-2" />}
-                                    {material.type === 'document' && <FileText className="w-4 h-4 text-gray-500 mr-2" />}
-                                    <span className="text-sm font-medium text-gray-900">{material.title}</span>
-                                  </div>
-                                  <button className="text-blue-600 hover:text-blue-800 transition-colors">
-                                    <Download className="w-4 h-4" />
-                                  </button>
-                                </div>
-                              ))}
+                          ))}
+                          {subject.materials.length > 3 && (
+                            <div className="text-xs text-gray-500">
+                              +{subject.materials.length - 3} more materials
                             </div>
-                          </div>
-                        )}
-
-                        {/* Course Link */}
-                        {subject.course && (
-                          <div className="pt-4 border-t">
-                            <Link
-                              to="/courses"
-                              className="inline-flex items-center text-blue-600 hover:text-blue-800 font-medium"
-                            >
-                              View Complete Course
-                              <ChevronRight className="w-4 h-4 ml-1" />
-                            </Link>
-                          </div>
-                        )}
+                          )}
+                        </div>
                       </div>
                     )}
 
                     {/* Action Button */}
-                    <div className="flex justify-between items-center mt-4">
-                      <button
-                        onClick={() => setExpandedSubject(expandedSubject === subject._id ? null : subject._id)}
-                        className="text-blue-600 hover:text-blue-700 font-medium flex items-center transition-colors"
-                      >
-                        {expandedSubject === subject._id ? 'Show Less' : 'View Details'}
-                        <ChevronRight 
-                          className={`w-4 h-4 ml-1 transform transition-transform ${
-                            expandedSubject === subject._id ? 'rotate-90' : ''
-                          }`} 
-                        />
-                      </button>
-                      <Link
-                        to="/register"
-                        className="bg-gradient-to-r from-blue-600 to-cyan-600 text-white px-4 py-2 rounded-lg text-sm font-medium hover:from-blue-700 hover:to-cyan-700 transition-all duration-200"
-                      >
-                        Enroll Now
-                      </Link>
-                    </div>
+                    <Link
+                      to={`/subjects/${subject._id}`}
+                      className="inline-flex items-center gap-2 text-blue-600 hover:text-blue-700 font-medium text-sm transition-colors"
+                    >
+                      View Details
+                      <ChevronRight className="w-4 h-4" />
+                    </Link>
                   </div>
                 </Card>
               ))}
             </div>
+
+            {/* Pagination */}
+            {pagination && pagination.pages > 1 && (
+              <div className="mt-12 flex justify-center">
+                <div className="flex items-center gap-2">
+                  <button
+                    onClick={() => handlePageChange(currentPage - 1)}
+                    disabled={currentPage === 1}
+                    className="px-3 py-2 text-sm font-medium text-gray-500 bg-white border border-gray-300 rounded-md hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
+                  >
+                    Previous
+                  </button>
+                  
+                  {Array.from({ length: pagination.pages }, (_, i) => i + 1).map((page) => (
+                    <button
+                      key={page}
+                      onClick={() => handlePageChange(page)}
+                      className={`px-3 py-2 text-sm font-medium rounded-md ${
+                        currentPage === page
+                          ? 'bg-blue-600 text-white'
+                          : 'text-gray-700 bg-white border border-gray-300 hover:bg-gray-50'
+                      }`}
+                    >
+                      {page}
+                    </button>
+                  ))}
+                  
+                  <button
+                    onClick={() => handlePageChange(currentPage + 1)}
+                    disabled={currentPage === pagination.pages}
+                    className="px-3 py-2 text-sm font-medium text-gray-500 bg-white border border-gray-300 rounded-md hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
+                  >
+                    Next
+                  </button>
+                </div>
+              </div>
+            )}
           </>
         )}
-      </div>
-
-      {/* CTA Section */}
-      <div className="bg-gradient-to-r from-blue-600 to-cyan-600 py-16">
-        <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 text-center">
-          <h2 className="text-3xl md:text-4xl font-bold text-white mb-6">
-            Ready to Master These Subjects?
-          </h2>
-          <p className="text-xl text-white opacity-90 mb-8">
-            Join our comprehensive courses and learn from industry experts
-          </p>
-          <div className="flex flex-col sm:flex-row gap-4 justify-center">
-            <Link
-              to="/courses"
-              className="bg-white text-blue-600 px-8 py-3 rounded-lg font-semibold hover:bg-gray-100 transition-colors inline-flex items-center justify-center"
-            >
-              <BookOpen className="w-5 h-5 mr-2" />
-              Browse Courses
-            </Link>
-            <Link
-              to="/register"
-              className="border-2 border-white text-white px-8 py-3 rounded-lg font-semibold hover:bg-white hover:text-blue-600 transition-colors inline-flex items-center justify-center"
-            >
-              Get Started Today
-            </Link>
-          </div>
-        </div>
       </div>
     </div>
   );
