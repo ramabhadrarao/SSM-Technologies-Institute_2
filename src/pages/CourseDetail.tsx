@@ -214,12 +214,15 @@ const CourseDetail: React.FC = () => {
                 {user && user.role === 'student' ? (
                   <Button 
                     size="lg" 
-                    className="flex-1 sm:flex-none"
+                    className={`flex-1 sm:flex-none ${isEnrolled ? 'bg-green-600 hover:bg-green-700' : ''}`}
                     onClick={handleEnrollment}
-                    disabled={enrolling}
+                    disabled={enrolling || checkingEnrollment || isEnrolled}
                   >
                     <Award className="w-5 h-5 mr-2" />
-                    {enrolling ? 'Enrolling...' : 'Enroll Now'}
+                    {checkingEnrollment ? 'Checking...' : 
+                     enrolling ? 'Enrolling...' : 
+                     isEnrolled ? 'Already Enrolled' : 
+                     'Enroll Now'}
                   </Button>
                 ) : (
                   <Button 
