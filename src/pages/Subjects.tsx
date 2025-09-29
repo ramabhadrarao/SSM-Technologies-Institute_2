@@ -28,28 +28,33 @@ const Subjects: React.FC = () => {
   const [selectedCategory, setSelectedCategory] = useState('all');
   const [expandedSubject, setExpandedSubject] = useState<string | null>(null);
 
-  useEffect(() => {
-    fetchSubjects();
-  }, []);
-
   const fetchSubjects = async () => {
     try {
+      console.log('Subjects: Starting to fetch subjects...');
       setLoading(true);
-      const params = {
+      const response = await apiClient.getSubjects({
+        page: 1,
         limit: 50,
         sortBy: 'name',
-        sortOrder: 'asc' as const
-      };
-      const response = await apiClient.getSubjects(params);
+        sortOrder: 'asc'
+      });
+      console.log('Subjects: API response received:', response);
       setSubjects(response.subjects || []);
+      console.log('Subjects: Set subjects state:', response.subjects || []);
     } catch (error) {
-      console.error('Error fetching subjects:', error);
-      // Fallback to empty array if API fails
-      setSubjects([]);
+      console.error('Subjects: Error fetching subjects:', error);
+      toast.error('Failed to load subjects');
+      // Don't throw the error, just handle it gracefully
     } finally {
       setLoading(false);
+      console.log('Subjects: Loading complete');
     }
   };
+
+  useEffect(() => {
+    console.log('Subjects: Component mounted, calling fetchSubjects');
+    fetchSubjects();
+  }, []);
 
   const getCategoryIcon = (subjectName: string) => {
     const name = subjectName.toLowerCase();
