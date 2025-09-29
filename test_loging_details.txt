@@ -1,0 +1,36 @@
+🔑 LOGIN CREDENTIALS:
+=====================================
+🔐 ADMIN details  ACCESS:
+Email: admin@ssmtechnologies.co.in
+Password: Admin@123456 
+
+👨‍🏫 INSTRUCTOR ACCESS:
+1. John Doe
+   Email: john.doe@ssmtech.com
+   Password: Instructor@123
+2. Priya Sharma
+   Email: priya.sharma@ssmtech.com
+   Password: Instructor@123
+3. Amit Patel
+   Email: amit.patel@ssmtech.com
+   Password: Instructor@123
+4. Sarah Johnson
+   Email: sarah.johnson@ssmtech.com
+   Password: Instructor@123
+
+👨‍🎓 STUDENT ACCESS:
+1. Rajesh Kumar
+   Email: student1@example.com
+   Password: Student@123
+2. Sneha Gupta
+   Email: student2@example.com
+   Password: Student@123
+3. Vikash Singh
+   Email: student3@example.com
+   Password: Student@123
+4. Anita Verma
+   Email: student4@example.com
+   Password: Student@123
+5. Ravi Agrawal
+   Email: student5@example.com
+   Password: Student@123
