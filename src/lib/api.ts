@@ -170,7 +170,60 @@ class ApiClient {
 
     return response;
   }
+// Add these methods to src/lib/api.ts in the ApiClient class
 
+// ========== SKILLS METHODS ==========
+async getSkills(params?: {
+  category?: string;
+  search?: string;
+}) {
+  const queryParams = new URLSearchParams();
+  if (params) {
+    Object.entries(params).forEach(([key, value]) => {
+      if (value !== undefined && value !== '') {
+        queryParams.append(key, value.toString());
+      }
+    });
+  }
+  
+  const endpoint = `/skills${queryParams.toString() ? `?${queryParams.toString()}` : ''}`;
+  return this.request(endpoint);
+}
+
+async getSkillsByCategory() {
+  return this.request('/skills/by-category');
+}
+
+async createSkill(skillData: {
+  name: string;
+  description?: string;
+  category: string;
+  level?: string;
+}) {
+  return this.request('/skills', {
+    method: 'POST',
+    body: JSON.stringify(skillData),
+  });
+}
+
+async updateSkill(id: string, skillData: {
+  name?: string;
+  description?: string;
+  category?: string;
+  level?: string;
+  isActive?: boolean;
+}) {
+  return this.request(`/skills/${id}`, {
+    method: 'PUT',
+    body: JSON.stringify(skillData),
+  });
+}
+
+async deleteSkill(id: string) {
+  return this.request(`/skills/${id}`, {
+    method: 'DELETE',
+  });
+}
   // ========== DASHBOARD METHODS ==========
   async getAdminDashboard() {
     return this.request('/dashboard/admin');

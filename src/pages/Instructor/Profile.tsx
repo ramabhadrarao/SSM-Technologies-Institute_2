@@ -1,22 +1,22 @@
+// src/pages/Instructor/Profile.tsx - Clean Fixed Version
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { toast } from 'react-hot-toast';
 import { 
-  User, 
-  Camera, 
-  Upload, 
-  Plus, 
-  Trash2, 
-  Save, 
-  ArrowLeft,
-  GraduationCap,
-  Award,
-  Briefcase,
-  Link as LinkIcon,
-  Mail,
-  Phone
+  User, Camera, Upload, Plus, Trash2, Save, ArrowLeft,
+  GraduationCap, Award, Briefcase, Link as LinkIcon,
+  CheckSquare, Square, Search, Mail, Phone, Code
 } from 'lucide-react';
 import { apiClient } from '../../lib/api';
+import LoadingSpinner from '../../components/UI/LoadingSpinner';
+
+interface Skill {
+  _id: string;
+  name: string;
+  description?: string;
+  category: string;
+  level: string;
+}
 
 interface Education {
   degree: string;
@@ -30,7 +30,6 @@ interface Certificate {
   url: string;
   issuedBy: string;
   issuedDate: string;
-  uploadedAt?: string;
 }
 
 interface SocialLinks {
@@ -40,38 +39,13 @@ interface SocialLinks {
   twitter: string;
 }
 
-interface ProfileData {
-  user: {
-    firstName: string;
-    lastName: string;
-    email: string;
-    phone: string;
-    whatsapp: string;
-    profileImageUrl?: string;
-  };
-  instructorProfile: {
-    bio: string;
-    designation: string;
-    experience: number;
-    specializations: string[];
-    education: Education[];
-    certificates: Certificate[];
-    socialLinks: SocialLinks;
-    imageUrl?: string;
-    resumeUrl?: string;
-  };
-}
-
 const InstructorProfile: React.FC = () => {
   const navigate = useNavigate();
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
-  const [profileData, setProfileData] = useState<ProfileData | null>(null);
-  const [profileImage, setProfileImage] = useState<File | null>(null);
-  const [resumeFile, setResumeFile] = useState<File | null>(null);
-  const [certificateFiles, setCertificateFiles] = useState<{ [key: number]: File }>({});
-
-  // Form states
+  
+  // Profile state
+  const [profileData, setProfileData] = useState<any>(null);
   const [bio, setBio] = useState('');
   const [designation, setDesignation] = useState('');
   const [experience, setExperience] = useState(0);
@@ -84,10 +58,34 @@ const InstructorProfile: React.FC = () => {
     website: '',
     twitter: ''
   });
+  
+  // Skills
+  const [availableSkills, setAvailableSkills] = useState<Skill[]>([]);
+  const [selectedSkillIds, setSelectedSkillIds] = useState<string[]>([]);
+  const [skillSearchQuery, setSkillSearchQuery] = useState('');
+  const [selectedCategory, setSelectedCategory] = useState('all');
+  const [showSkillSelector, setShowSkillSelector] = useState(false);
+  
+  // Files
+  const [profileImage, setProfileImage] = useState<File | null>(null);
+  const [profileImagePreview, setProfileImagePreview] = useState<string | null>(null);
+  const [resumeFile, setResumeFile] = useState<File | null>(null);
+  const [certificateFiles, setCertificateFiles] = useState<{ [key: number]: File }>({});
   const [newSpecialization, setNewSpecialization] = useState('');
+  
+  const categories = [
+    { value: 'all', label: 'All Categories' },
+    { value: 'programming', label: 'Programming' },
+    { value: 'design', label: 'Design' },
+    { value: 'marketing', label: 'Marketing' },
+    { value: 'business', label: 'Business' },
+    { value: 'data-science', label: 'Data Science' },
+    { value: 'other', label: 'Other' }
+  ];
 
   useEffect(() => {
     fetchProfile();
+    fetchAvailableSkills();
   }, []);
 
   const fetchProfile = async () => {
@@ -104,11 +102,19 @@ const InstructorProfile: React.FC = () => {
         setEducation(profile.instructorProfile.education || []);
         setCertificates(profile.instructorProfile.certificates || []);
         setSocialLinks(profile.instructorProfile.socialLinks || {
-          linkedin: '',
-          github: '',
-          website: '',
-          twitter: ''
+          linkedin: '', github: '', website: '', twitter: ''
         });
+        
+        if (profile.instructorProfile.imageUrl) {
+          setProfileImagePreview(profile.instructorProfile.imageUrl);
+        }
+        
+        if (profile.instructorProfile.skills && Array.isArray(profile.instructorProfile.skills)) {
+          const skillIds = profile.instructorProfile.skills.map((skill: any) => 
+            typeof skill === 'string' ? skill : skill._id
+          );
+          setSelectedSkillIds(skillIds);
+        }
       }
     } catch (error: any) {
       console.error('Error fetching profile:', error);
@@ -118,37 +124,55 @@ const InstructorProfile: React.FC = () => {
     }
   };
 
+  const fetchAvailableSkills = async () => {
+    try {
+      const response = await apiClient.getSkills();
+      setAvailableSkills(response || []);
+    } catch (error) {
+      console.error('Error fetching skills:', error);
+    }
+  };
+
   const handleImageUpload = (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
     if (file) {
-      if (file.size > 5 * 1024 * 1024) { // 5MB limit
+      if (file.size > 5 * 1024 * 1024) {
         toast.error('Image size should be less than 5MB');
         return;
       }
       setProfileImage(file);
+      setProfileImagePreview(URL.createObjectURL(file));
     }
   };
 
   const handleResumeUpload = (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
     if (file) {
-      if (file.size > 10 * 1024 * 1024) { // 10MB limit
+      if (file.size > 10 * 1024 * 1024) {
         toast.error('Resume size should be less than 10MB');
         return;
       }
       setResumeFile(file);
+      toast.success('Resume selected');
     }
   };
 
   const handleCertificateUpload = (index: number, event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
     if (file) {
-      if (file.size > 5 * 1024 * 1024) { // 5MB limit
+      if (file.size > 5 * 1024 * 1024) {
         toast.error('Certificate size should be less than 5MB');
         return;
       }
       setCertificateFiles(prev => ({ ...prev, [index]: file }));
+      toast.success('Certificate file selected');
     }
+  };
+
+  const handleSkillToggle = (skillId: string) => {
+    setSelectedSkillIds(prev => 
+      prev.includes(skillId) ? prev.filter(id => id !== skillId) : [...prev, skillId]
+    );
   };
 
   const addSpecialization = () => {
@@ -163,13 +187,14 @@ const InstructorProfile: React.FC = () => {
   };
 
   const addEducation = () => {
-    setEducation([...education, { degree: '', institution: '', year: new Date().getFullYear(), grade: '' }]);
+    setEducation([...education, { 
+      degree: '', institution: '', year: new Date().getFullYear(), grade: '' 
+    }]);
   };
 
   const updateEducation = (index: number, field: keyof Education, value: string | number) => {
-    const updated = education.map((edu, i) => 
-      i === index ? { ...edu, [field]: value } : edu
-    );
+    const updated = [...education];
+    updated[index] = { ...updated[index], [field]: value };
     setEducation(updated);
   };
 
@@ -179,71 +204,69 @@ const InstructorProfile: React.FC = () => {
 
   const addCertificate = () => {
     setCertificates([...certificates, { 
-      name: '', 
-      url: '', 
-      issuedBy: '', 
+      name: '', url: '', issuedBy: '', 
       issuedDate: new Date().toISOString().split('T')[0]
     }]);
   };
 
   const updateCertificate = (index: number, field: keyof Certificate, value: string) => {
-    const updated = certificates.map((cert, i) => 
-      i === index ? { ...cert, [field]: value } : cert
-    );
+    const updated = [...certificates];
+    updated[index] = { ...updated[index], [field]: value };
     setCertificates(updated);
   };
 
   const removeCertificate = (index: number) => {
     setCertificates(certificates.filter((_, i) => i !== index));
-    // Remove associated file if exists
-    setCertificateFiles(prev => {
-      const updated = { ...prev };
-      delete updated[index];
-      return updated;
-    });
   };
 
   const handleSave = async () => {
+    if (!bio || bio.length < 50) {
+      toast.error('Bio must be at least 50 characters');
+      return;
+    }
+    if (!designation) {
+      toast.error('Please enter your designation');
+      return;
+    }
+    if (selectedSkillIds.length === 0) {
+      toast.error('Please select at least one skill');
+      return;
+    }
+
     try {
       setSaving(true);
 
-      // Upload profile image if selected
       let imageUrl = profileData?.instructorProfile?.imageUrl;
       if (profileImage) {
         const imageResponse = await apiClient.uploadFile(profileImage, 'profile');
         imageUrl = imageResponse.url;
       }
 
-      // Upload resume if selected
       let resumeUrl = profileData?.instructorProfile?.resumeUrl;
       if (resumeFile) {
         const resumeResponse = await apiClient.uploadFile(resumeFile, 'resume');
         resumeUrl = resumeResponse.url;
       }
 
-      // Upload certificates
       const updatedCertificates = [...certificates];
       for (const [index, file] of Object.entries(certificateFiles)) {
         const certResponse = await apiClient.uploadFile(file, 'certificate');
         updatedCertificates[parseInt(index)].url = certResponse.url;
       }
 
-      // Update profile
       const updateData = {
-        bio,
-        designation,
-        experience,
-        specializations,
-        education,
-        certificates: updatedCertificates,
-        socialLinks,
-        imageUrl,
-        resumeUrl
+        bio, designation, experience, specializations,
+        education, certificates: updatedCertificates,
+        socialLinks, imageUrl, resumeUrl,
+        skills: selectedSkillIds
       };
 
       await apiClient.updateInstructorProfile(updateData);
       toast.success('Profile updated successfully!');
-      navigate('/instructor/dashboard');
+      
+      setTimeout(() => {
+        navigate('/instructor/dashboard');
+      }, 1000);
     } catch (error: any) {
       console.error('Error updating profile:', error);
       toast.error(error.message || 'Failed to update profile');
@@ -252,11 +275,21 @@ const InstructorProfile: React.FC = () => {
     }
   };
 
+  const filteredSkills = availableSkills.filter(skill => {
+    const matchesSearch = skill.name.toLowerCase().includes(skillSearchQuery.toLowerCase());
+    const matchesCategory = selectedCategory === 'all' || skill.category === selectedCategory;
+    return matchesSearch && matchesCategory;
+  });
+
+  const getSelectedSkills = () => {
+    return availableSkills.filter(skill => selectedSkillIds.includes(skill._id));
+  };
+
   if (loading) {
     return (
       <div className="min-h-screen bg-gray-50 flex items-center justify-center">
         <div className="text-center">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto"></div>
+          <LoadingSpinner size="lg" />
           <p className="mt-4 text-gray-600">Loading profile...</p>
         </div>
       </div>
@@ -276,47 +309,40 @@ const InstructorProfile: React.FC = () => {
             Back to Dashboard
           </button>
           <h1 className="text-3xl font-bold text-gray-900">Update Profile</h1>
-          <p className="text-gray-600 mt-2">Manage your instructor profile information</p>
+          <p className="text-gray-600 mt-2">
+            {profileData?.instructorProfile?.isApproved 
+              ? 'Keep your instructor profile up to date'
+              : 'Complete your profile to get approved by admin'}
+          </p>
         </div>
 
         <div className="bg-white rounded-lg shadow-sm">
-          {/* Profile Image Section */}
+          {/* Profile Image */}
           <div className="p-6 border-b border-gray-200">
             <h2 className="text-lg font-semibold text-gray-900 mb-4 flex items-center">
               <Camera className="w-5 h-5 mr-2" />
               Profile Photo
             </h2>
             <div className="flex items-center space-x-6">
-              <div className="relative">
-                <div className="w-24 h-24 rounded-full bg-gray-200 flex items-center justify-center overflow-hidden">
-                  {profileData?.instructorProfile?.imageUrl || profileImage ? (
-                    <img
-                      src={profileImage ? URL.createObjectURL(profileImage) : profileData?.instructorProfile?.imageUrl}
-                      alt="Profile"
-                      className="w-full h-full object-cover"
-                    />
-                  ) : (
-                    <User className="w-12 h-12 text-gray-400" />
-                  )}
-                </div>
+              <div className="w-24 h-24 rounded-full bg-gray-200 flex items-center justify-center overflow-hidden">
+                {profileImagePreview ? (
+                  <img src={profileImagePreview} alt="Profile" className="w-full h-full object-cover" />
+                ) : (
+                  <User className="w-12 h-12 text-gray-400" />
+                )}
               </div>
               <div>
                 <label className="cursor-pointer bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 transition-colors inline-flex items-center">
                   <Upload className="w-4 h-4 mr-2" />
                   Upload Photo
-                  <input
-                    type="file"
-                    accept="image/*"
-                    onChange={handleImageUpload}
-                    className="hidden"
-                  />
+                  <input type="file" accept="image/*" onChange={handleImageUpload} className="hidden" />
                 </label>
                 <p className="text-sm text-gray-500 mt-2">JPG, PNG up to 5MB</p>
               </div>
             </div>
           </div>
 
-          {/* Basic Information */}
+          {/* Basic Info (Read-only) */}
           <div className="p-6 border-b border-gray-200">
             <h2 className="text-lg font-semibold text-gray-900 mb-4 flex items-center">
               <User className="w-5 h-5 mr-2" />
@@ -324,53 +350,37 @@ const InstructorProfile: React.FC = () => {
             </h2>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  First Name
-                </label>
-                <input
-                  type="text"
-                  value={profileData?.user?.firstName || ''}
-                  disabled
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg bg-gray-50"
-                />
+                <label className="block text-sm font-medium text-gray-700 mb-2">First Name</label>
+                <div className="flex items-center px-3 py-2 bg-gray-50 border border-gray-300 rounded-lg">
+                  <User className="w-4 h-4 text-gray-400 mr-2" />
+                  <span className="text-gray-600">{profileData?.user?.firstName}</span>
+                </div>
               </div>
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Last Name
-                </label>
-                <input
-                  type="text"
-                  value={profileData?.user?.lastName || ''}
-                  disabled
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg bg-gray-50"
-                />
+                <label className="block text-sm font-medium text-gray-700 mb-2">Last Name</label>
+                <div className="flex items-center px-3 py-2 bg-gray-50 border border-gray-300 rounded-lg">
+                  <User className="w-4 h-4 text-gray-400 mr-2" />
+                  <span className="text-gray-600">{profileData?.user?.lastName}</span>
+                </div>
               </div>
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Email
-                </label>
-                <input
-                  type="email"
-                  value={profileData?.user?.email || ''}
-                  disabled
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg bg-gray-50"
-                />
+                <label className="block text-sm font-medium text-gray-700 mb-2">Email</label>
+                <div className="flex items-center px-3 py-2 bg-gray-50 border border-gray-300 rounded-lg">
+                  <Mail className="w-4 h-4 text-gray-400 mr-2" />
+                  <span className="text-gray-600">{profileData?.user?.email}</span>
+                </div>
               </div>
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Phone
-                </label>
-                <input
-                  type="tel"
-                  value={profileData?.user?.phone || ''}
-                  disabled
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg bg-gray-50"
-                />
+                <label className="block text-sm font-medium text-gray-700 mb-2">Phone</label>
+                <div className="flex items-center px-3 py-2 bg-gray-50 border border-gray-300 rounded-lg">
+                  <Phone className="w-4 h-4 text-gray-400 mr-2" />
+                  <span className="text-gray-600">{profileData?.user?.phone}</span>
+                </div>
               </div>
             </div>
           </div>
 
-          {/* Professional Information */}
+          {/* Professional Info */}
           <div className="p-6 border-b border-gray-200">
             <h2 className="text-lg font-semibold text-gray-900 mb-4 flex items-center">
               <Briefcase className="w-5 h-5 mr-2" />
@@ -379,20 +389,21 @@ const InstructorProfile: React.FC = () => {
             <div className="space-y-6">
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Bio
+                  Bio <span className="text-red-500">*</span>
                 </label>
                 <textarea
                   value={bio}
                   onChange={(e) => setBio(e.target.value)}
                   rows={4}
                   className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                  placeholder="Tell us about yourself..."
+                  placeholder="Tell us about yourself... (minimum 50 characters)"
                 />
+                <p className="text-sm text-gray-500 mt-1">{bio.length}/50 characters minimum</p>
               </div>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-2">
-                    Designation
+                    Designation <span className="text-red-500">*</span>
                   </label>
                   <input
                     type="text"
@@ -404,7 +415,7 @@ const InstructorProfile: React.FC = () => {
                 </div>
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-2">
-                    Experience (Years)
+                    Experience (Years) <span className="text-red-500">*</span>
                   </label>
                   <input
                     type="number"
@@ -418,11 +429,123 @@ const InstructorProfile: React.FC = () => {
             </div>
           </div>
 
+          {/* Skills */}
+          <div className="p-6 border-b border-gray-200">
+            <div className="flex justify-between items-center mb-4">
+              <h2 className="text-lg font-semibold text-gray-900 flex items-center">
+                <Code className="w-5 h-5 mr-2" />
+                Skills & Expertise <span className="text-red-500 ml-1">*</span>
+              </h2>
+              <button
+                onClick={() => setShowSkillSelector(!showSkillSelector)}
+                className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 flex items-center"
+              >
+                <Plus className="w-4 h-4 mr-2" />
+                {showSkillSelector ? 'Close' : 'Add Skills'}
+              </button>
+            </div>
+
+            {selectedSkillIds.length > 0 && (
+              <div className="mb-4">
+                <p className="text-sm text-gray-600 mb-3">Selected Skills ({selectedSkillIds.length})</p>
+                <div className="flex flex-wrap gap-2">
+                  {getSelectedSkills().map((skill) => (
+                    <span
+                      key={skill._id}
+                      className="inline-flex items-center px-3 py-1 rounded-full text-sm bg-blue-100 text-blue-800"
+                    >
+                      {skill.name}
+                      <button
+                        onClick={() => handleSkillToggle(skill._id)}
+                        className="ml-2 text-blue-600 hover:text-blue-800"
+                      >
+                        <Trash2 className="w-3 h-3" />
+                      </button>
+                    </span>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {showSkillSelector && (
+              <div className="border-2 border-blue-200 rounded-lg p-4 bg-blue-50">
+                <div className="flex flex-col sm:flex-row gap-3 mb-4">
+                  <div className="flex-1 relative">
+                    <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-5 h-5" />
+                    <input
+                      type="text"
+                      placeholder="Search skills..."
+                      value={skillSearchQuery}
+                      onChange={(e) => setSkillSearchQuery(e.target.value)}
+                      className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg"
+                    />
+                  </div>
+                  <select
+                    value={selectedCategory}
+                    onChange={(e) => setSelectedCategory(e.target.value)}
+                    className="px-3 py-2 border border-gray-300 rounded-lg"
+                  >
+                    {categories.map(cat => (
+                      <option key={cat.value} value={cat.value}>{cat.label}</option>
+                    ))}
+                  </select>
+                </div>
+
+                <div className="max-h-64 overflow-y-auto space-y-2">
+                  {filteredSkills.map((skill) => {
+                    const isSelected = selectedSkillIds.includes(skill._id);
+                    return (
+                      <div
+                        key={skill._id}
+                        onClick={() => handleSkillToggle(skill._id)}
+                        className={`flex items-center justify-between p-3 rounded-lg cursor-pointer transition-colors ${
+                          isSelected 
+                            ? 'bg-blue-100 border-2 border-blue-500' 
+                            : 'bg-white border border-gray-200 hover:bg-gray-50'
+                        }`}
+                      >
+                        <div className="flex items-center space-x-3">
+                          {isSelected ? (
+                            <CheckSquare className="w-5 h-5 text-blue-600" />
+                          ) : (
+                            <Square className="w-5 h-5 text-gray-400" />
+                          )}
+                          <div>
+                            <p className="font-medium text-gray-900">{skill.name}</p>
+                            {skill.description && (
+                              <p className="text-sm text-gray-600">{skill.description}</p>
+                            )}
+                          </div>
+                        </div>
+                        <span className="text-xs px-2 py-1 bg-gray-200 text-gray-700 rounded">
+                          {skill.category}
+                        </span>
+                      </div>
+                    );
+                  })}
+                </div>
+
+                <button
+                  onClick={() => setShowSkillSelector(false)}
+                  className="mt-4 w-full px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700"
+                >
+                  Done - {selectedSkillIds.length} Selected
+                </button>
+              </div>
+            )}
+
+            {selectedSkillIds.length === 0 && !showSkillSelector && (
+              <div className="text-center py-8 bg-gray-50 rounded-lg border-2 border-dashed border-gray-300">
+                <Code className="w-12 h-12 text-gray-400 mx-auto mb-3" />
+                <p className="text-gray-600">No skills selected</p>
+                <p className="text-sm text-gray-500">Click "Add Skills" to select your expertise</p>
+              </div>
+            )}
+          </div>
+
           {/* Specializations */}
           <div className="p-6 border-b border-gray-200">
-            <h2 className="text-lg font-semibold text-gray-900 mb-4">
-              Specializations
-            </h2>
+            <h2 className="text-lg font-semibold text-gray-900 mb-4">Specializations</h2>
             <div className="space-y-4">
               <div className="flex space-x-2">
                 <input
@@ -430,12 +553,12 @@ const InstructorProfile: React.FC = () => {
                   value={newSpecialization}
                   onChange={(e) => setNewSpecialization(e.target.value)}
                   onKeyPress={(e) => e.key === 'Enter' && addSpecialization()}
-                  className="flex-1 px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                  placeholder="Add a specialization..."
+                  className="flex-1 px-3 py-2 border border-gray-300 rounded-lg"
+                  placeholder="Add specialization..."
                 />
                 <button
                   onClick={addSpecialization}
-                  className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
+                  className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700"
                 >
                   <Plus className="w-4 h-4" />
                 </button>
@@ -444,12 +567,12 @@ const InstructorProfile: React.FC = () => {
                 {specializations.map((spec, index) => (
                   <span
                     key={index}
-                    className="inline-flex items-center px-3 py-1 rounded-full text-sm bg-blue-100 text-blue-800"
+                    className="inline-flex items-center px-3 py-1 rounded-full text-sm bg-purple-100 text-purple-800"
                   >
                     {spec}
                     <button
                       onClick={() => removeSpecialization(index)}
-                      className="ml-2 text-blue-600 hover:text-blue-800"
+                      className="ml-2 text-purple-600 hover:text-purple-800"
                     >
                       <Trash2 className="w-3 h-3" />
                     </button>
@@ -468,69 +591,50 @@ const InstructorProfile: React.FC = () => {
               </h2>
               <button
                 onClick={addEducation}
-                className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors flex items-center"
+                className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 flex items-center"
               >
                 <Plus className="w-4 h-4 mr-2" />
-                Add Education
+                Add
               </button>
             </div>
             <div className="space-y-4">
               {education.map((edu, index) => (
-                <div key={index} className="p-4 border border-gray-200 rounded-lg">
+                <div key={index} className="p-4 border border-gray-200 rounded-lg bg-gray-50">
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
-                    <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-1">
-                        Degree
-                      </label>
-                      <input
-                        type="text"
-                        value={edu.degree}
-                        onChange={(e) => updateEducation(index, 'degree', e.target.value)}
-                        className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                        placeholder="e.g., Bachelor of Computer Science"
-                      />
-                    </div>
-                    <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-1">
-                        Institution
-                      </label>
-                      <input
-                        type="text"
-                        value={edu.institution}
-                        onChange={(e) => updateEducation(index, 'institution', e.target.value)}
-                        className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                        placeholder="e.g., University of Technology"
-                      />
-                    </div>
-                    <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-1">
-                        Year
-                      </label>
-                      <input
-                        type="number"
-                        min="1950"
-                        max={new Date().getFullYear()}
-                        value={edu.year}
-                        onChange={(e) => updateEducation(index, 'year', parseInt(e.target.value))}
-                        className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                      />
-                    </div>
-                    <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-1">
-                        Grade/CGPA
-                      </label>
-                      <input
-                        type="text"
-                        value={edu.grade}
-                        onChange={(e) => updateEducation(index, 'grade', e.target.value)}
-                        className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                        placeholder="e.g., 8.5 CGPA or First Class"
-                      />
-                    </div>
+                    <input
+                      type="text"
+                      value={edu.degree}
+                      onChange={(e) => updateEducation(index, 'degree', e.target.value)}
+                      className="px-3 py-2 border border-gray-300 rounded-lg"
+                      placeholder="Degree"
+                    />
+                    <input
+                      type="text"
+                      value={edu.institution}
+                      onChange={(e) => updateEducation(index, 'institution', e.target.value)}
+                      className="px-3 py-2 border border-gray-300 rounded-lg"
+                      placeholder="Institution"
+                    />
+                    <input
+                      type="number"
+                      min="1950"
+                      max={new Date().getFullYear()}
+                      value={edu.year}
+                      onChange={(e) => updateEducation(index, 'year', parseInt(e.target.value))}
+                      className="px-3 py-2 border border-gray-300 rounded-lg"
+                      placeholder="Year"
+                    />
+                    <input
+                      type="text"
+                      value={edu.grade}
+                      onChange={(e) => updateEducation(index, 'grade', e.target.value)}
+                      className="px-3 py-2 border border-gray-300 rounded-lg"
+                      placeholder="Grade"
+                    />
                   </div>
                   <button
                     onClick={() => removeEducation(index)}
-                    className="text-red-600 hover:text-red-800 flex items-center"
+                    className="text-red-600 hover:text-red-800 flex items-center text-sm"
                   >
                     <Trash2 className="w-4 h-4 mr-1" />
                     Remove
@@ -549,66 +653,57 @@ const InstructorProfile: React.FC = () => {
               </h2>
               <button
                 onClick={addCertificate}
-                className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors flex items-center"
+                className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 flex items-center"
               >
                 <Plus className="w-4 h-4 mr-2" />
-                Add Certificate
+                Add
               </button>
             </div>
             <div className="space-y-4">
               {certificates.map((cert, index) => (
-                <div key={index} className="p-4 border border-gray-200 rounded-lg">
+                <div key={index} className="p-4 border border-gray-200 rounded-lg bg-gray-50">
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
-                    <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-1">
-                        Certificate Name
-                      </label>
-                      <input
-                        type="text"
-                        value={cert.name}
-                        onChange={(e) => updateCertificate(index, 'name', e.target.value)}
-                        className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                        placeholder="e.g., AWS Certified Solutions Architect"
-                      />
-                    </div>
-                    <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-1">
-                        Issued By
-                      </label>
-                      <input
-                        type="text"
-                        value={cert.issuedBy}
-                        onChange={(e) => updateCertificate(index, 'issuedBy', e.target.value)}
-                        className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                        placeholder="e.g., Amazon Web Services"
-                      />
-                    </div>
-                    <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-1">
-                        Issue Date
-                      </label>
-                      <input
-                        type="date"
-                        value={cert.issuedDate}
-                        onChange={(e) => updateCertificate(index, 'issuedDate', e.target.value)}
-                        className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                      />
-                    </div>
-                    <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-1">
-                        Certificate File
-                      </label>
+                    <input
+                      type="text"
+                      value={cert.name}
+                      onChange={(e) => updateCertificate(index, 'name', e.target.value)}
+                      className="px-3 py-2 border border-gray-300 rounded-lg"
+                      placeholder="Certificate Name"
+                    />
+                    <input
+                      type="text"
+                      value={cert.issuedBy}
+                      onChange={(e) => updateCertificate(index, 'issuedBy', e.target.value)}
+                      className="px-3 py-2 border border-gray-300 rounded-lg"
+                      placeholder="Issued By"
+                    />
+                    <input
+                      type="date"
+                      value={cert.issuedDate}
+                      onChange={(e) => updateCertificate(index, 'issuedDate', e.target.value)}
+                      className="px-3 py-2 border border-gray-300 rounded-lg"
+                    />
+                    <label className="cursor-pointer">
+                      <div className="px-3 py-2 border border-gray-300 rounded-lg bg-white hover:bg-gray-50 flex items-center justify-center">
+                        <Upload className="w-4 h-4 mr-2" />
+                        <span className="text-sm">
+                          {certificateFiles[index] ? 'File Selected' : 'Upload File'}
+                        </span>
+                      </div>
                       <input
                         type="file"
                         accept=".pdf,.jpg,.jpeg,.png"
+                        // CONTINUATION FROM CERTIFICATE FILE UPLOAD
+// Add this after the certificate upload input in the previous file
+
                         onChange={(e) => handleCertificateUpload(index, e)}
-                        className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                        className="hidden"
                       />
-                    </div>
+                    </label>
                   </div>
                   <button
                     onClick={() => removeCertificate(index)}
-                    className="text-red-600 hover:text-red-800 flex items-center"
+                    className="text-red-600 hover:text-red-800 flex items-center text-sm"
                   >
                     <Trash2 className="w-4 h-4 mr-1" />
                     Remove
@@ -620,38 +715,37 @@ const InstructorProfile: React.FC = () => {
 
           {/* Resume Upload */}
           <div className="p-6 border-b border-gray-200">
-            <h2 className="text-lg font-semibold text-gray-900 mb-4">
+            <h2 className="text-lg font-semibold text-gray-900 mb-4 flex items-center">
+              <Upload className="w-5 h-5 mr-2" />
               Resume
             </h2>
             <div className="space-y-4">
-              {profileData?.instructorProfile?.resumeUrl && (
-                <div className="flex items-center space-x-2 text-sm text-gray-600">
-                  <span>Current resume:</span>
+              {profileData?.instructorProfile?.resumeUrl && !resumeFile && (
+                <div className="flex items-center justify-between p-3 bg-green-50 border border-green-200 rounded-lg">
+                  <span className="text-sm text-green-800">Current resume uploaded</span>
                   <a
                     href={profileData.instructorProfile.resumeUrl}
                     target="_blank"
                     rel="noopener noreferrer"
-                    className="text-blue-600 hover:text-blue-800"
+                    className="text-blue-600 hover:text-blue-800 text-sm font-medium"
                   >
                     View Resume
                   </a>
                 </div>
               )}
-              <div>
-                <label className="cursor-pointer bg-gray-100 border-2 border-dashed border-gray-300 rounded-lg p-6 block text-center hover:bg-gray-50 transition-colors">
-                  <Upload className="w-8 h-8 text-gray-400 mx-auto mb-2" />
-                  <span className="text-gray-600">
-                    {resumeFile ? resumeFile.name : 'Click to upload resume'}
-                  </span>
-                  <p className="text-sm text-gray-500 mt-1">PDF up to 10MB</p>
-                  <input
-                    type="file"
-                    accept=".pdf"
-                    onChange={handleResumeUpload}
-                    className="hidden"
-                  />
-                </label>
-              </div>
+              <label className="cursor-pointer bg-gray-100 border-2 border-dashed border-gray-300 rounded-lg p-6 block text-center hover:bg-gray-50 transition-colors">
+                <Upload className="w-8 h-8 text-gray-400 mx-auto mb-2" />
+                <span className="text-gray-600 block">
+                  {resumeFile ? resumeFile.name : 'Click to upload resume'}
+                </span>
+                <p className="text-sm text-gray-500 mt-1">PDF up to 10MB</p>
+                <input
+                  type="file"
+                  accept=".pdf"
+                  onChange={handleResumeUpload}
+                  className="hidden"
+                />
+              </label>
             </div>
           </div>
 
@@ -659,7 +753,7 @@ const InstructorProfile: React.FC = () => {
           <div className="p-6 border-b border-gray-200">
             <h2 className="text-lg font-semibold text-gray-900 mb-4 flex items-center">
               <LinkIcon className="w-5 h-5 mr-2" />
-              Social Links
+              Social Links (Optional)
             </h2>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div>
@@ -670,7 +764,7 @@ const InstructorProfile: React.FC = () => {
                   type="url"
                   value={socialLinks.linkedin}
                   onChange={(e) => setSocialLinks({...socialLinks, linkedin: e.target.value})}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
                   placeholder="https://linkedin.com/in/yourprofile"
                 />
               </div>
@@ -682,7 +776,7 @@ const InstructorProfile: React.FC = () => {
                   type="url"
                   value={socialLinks.github}
                   onChange={(e) => setSocialLinks({...socialLinks, github: e.target.value})}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
                   placeholder="https://github.com/yourusername"
                 />
               </div>
@@ -694,7 +788,7 @@ const InstructorProfile: React.FC = () => {
                   type="url"
                   value={socialLinks.website}
                   onChange={(e) => setSocialLinks({...socialLinks, website: e.target.value})}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
                   placeholder="https://yourwebsite.com"
                 />
               </div>
@@ -706,40 +800,60 @@ const InstructorProfile: React.FC = () => {
                   type="url"
                   value={socialLinks.twitter}
                   onChange={(e) => setSocialLinks({...socialLinks, twitter: e.target.value})}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
                   placeholder="https://twitter.com/yourusername"
                 />
               </div>
             </div>
           </div>
 
-          {/* Save Button */}
-          <div className="p-6">
-            <div className="flex justify-end space-x-4">
-              <button
-                onClick={() => navigate('/instructor/dashboard')}
-                className="px-6 py-2 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 transition-colors"
-              >
-                Cancel
-              </button>
-              <button
-                onClick={handleSave}
-                disabled={saving}
-                className="px-6 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center"
-              >
-                {saving ? (
-                  <>
-                    <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>
-                    Saving...
-                  </>
-                ) : (
-                  <>
-                    <Save className="w-4 h-4 mr-2" />
-                    Save Profile
-                  </>
+          {/* Action Buttons */}
+          <div className="p-6 bg-gray-50">
+            <div className="flex flex-col sm:flex-row justify-between items-center space-y-3 sm:space-y-0">
+              <div className="text-sm text-gray-600">
+                {!profileData?.instructorProfile?.isApproved && (
+                  <p className="flex items-center">
+                    <span className="inline-block w-2 h-2 bg-yellow-500 rounded-full mr-2"></span>
+                    Complete all required fields (*) to submit for approval
+                  </p>
                 )}
-              </button>
+              </div>
+              <div className="flex space-x-4 w-full sm:w-auto">
+                <button
+                  onClick={() => navigate('/instructor/dashboard')}
+                  className="flex-1 sm:flex-none px-6 py-2 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 transition-colors"
+                >
+                  Cancel
+                </button>
+                <button
+                  onClick={handleSave}
+                  disabled={saving || !bio || bio.length < 50 || !designation || selectedSkillIds.length === 0}
+                  className="flex-1 sm:flex-none px-6 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center"
+                >
+                  {saving ? (
+                    <>
+                      <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>
+                      Saving...
+                    </>
+                  ) : (
+                    <>
+                      <Save className="w-4 h-4 mr-2" />
+                      Save Profile
+                    </>
+                  )}
+                </button>
+              </div>
             </div>
+            {(!bio || bio.length < 50 || !designation || selectedSkillIds.length === 0) && (
+              <div className="mt-3 p-3 bg-yellow-50 border border-yellow-200 rounded-lg">
+                <p className="text-sm text-yellow-800 font-medium">Required fields missing:</p>
+                <ul className="text-sm text-yellow-700 mt-1 space-y-1">
+                  {(!bio || bio.length < 50) && <li>• Bio (minimum 50 characters)</li>}
+                  {!designation && <li>• Designation</li>}
+                  {selectedSkillIds.length === 0 && <li>• At least one skill</li>}
+                </ul>
+              </div>
+            )}
           </div>
         </div>
       </div>
