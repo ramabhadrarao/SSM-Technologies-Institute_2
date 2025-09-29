@@ -20,6 +20,7 @@ import LoadingSpinner from '../components/UI/LoadingSpinner';
 import Button from '../components/UI/Button';
 import { useAuth } from '../contexts/AuthContext';
 import { toast } from 'react-hot-toast';
+import MaterialsTab from '../components/CourseDetail/MaterialsTab';
 
 const CourseDetail: React.FC = () => {
   const { id } = useParams<{ id: string }>();
@@ -59,7 +60,7 @@ const CourseDetail: React.FC = () => {
     try {
       setCheckingEnrollment(true);
       const response = await apiClient.checkEnrollmentStatus(id);
-      setIsEnrolled(response.data.isEnrolled);
+      setIsEnrolled(response.isEnrolled);
     } catch (error) {
       console.error('Error checking enrollment status:', error);
       setIsEnrolled(false);
@@ -129,6 +130,7 @@ const CourseDetail: React.FC = () => {
     { id: 'video', label: 'Video Preview' },
     { id: 'curriculum', label: 'Curriculum' },
     { id: 'instructor', label: 'Instructor' },
+    ...(user && user.role === 'student' && isEnrolled ? [{ id: 'materials', label: 'Materials' }] : []),
     { id: 'reviews', label: 'Reviews' }
   ];
 
@@ -360,6 +362,10 @@ const CourseDetail: React.FC = () => {
                     </div>
                   </Card>
                 </div>
+              )}
+
+              {selectedTab === 'materials' && user && user.role === 'student' && isEnrolled && (
+                <MaterialsTab courseId={id!} />
               )}
 
               {selectedTab === 'reviews' && (

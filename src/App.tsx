@@ -33,6 +33,7 @@ import AdminTeamManagement from './pages/Admin/TeamManagement';
 import StudentDashboard from './pages/Student/Dashboard';
 import InstructorDashboard from './pages/Instructor/Dashboard';
 import InstructorProfile from './pages/Instructor/Profile';
+import InstructorCourseManagement from './pages/Instructor/CourseManagement';
 
 function App() {
   return (
@@ -73,6 +74,7 @@ function App() {
                 <Route path="/student/dashboard" element={<StudentDashboard />} />
                 <Route path="/instructor/dashboard" element={<InstructorDashboard />} />
                 <Route path="/instructor/profile" element={<InstructorProfile />} />
+                <Route path="/instructor/courses/:courseId" element={<InstructorCourseManagement />} />
 
                 {/* Catch-all route for undefined paths */}
                 <Route path="*" element={<UnderDevelopment />} />

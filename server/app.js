@@ -17,6 +17,7 @@ const teamRoutes = require('./routes/team'); // Public team routes
 const skillRoutes = require('./routes/skills');
 const uploadRoutes = require('./routes/upload'); // General upload routes
 const enrollmentRoutes = require('./routes/enrollments'); // Student enrollment routes
+const materialRoutes = require('./routes/materials'); // Course materials routes
 const app = express();
 
 // Connect to database
@@ -72,6 +73,7 @@ app.use('/api/team', teamRoutes); // Public team members
 app.use('/api/skills', skillRoutes);
 app.use('/api/upload', uploadRoutes); // General file upload
 app.use('/api/enrollments', enrollmentRoutes); // Student enrollment
+app.use('/api/materials', materialRoutes); // Course materials
 // 404 handler
 app.use('*', (req, res) => {
   res.status(404).json({
