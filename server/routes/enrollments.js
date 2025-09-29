@@ -124,6 +124,51 @@ router.get('/my', auth, async (req, res) => {
   }
 });
 
+// Check enrollment status for a specific course
+router.get('/status/:courseId', auth, async (req, res) => {
+  try {
+    const { courseId } = req.params;
+    const userId = req.user.id;
+
+    // Check if user is a student
+    if (req.user.role !== 'student') {
+      return res.status(403).json({
+        success: false,
+        message: 'Only students can check enrollment status'
+      });
+    }
+
+    // Find the student
+    const student = await Student.findOne({ user: userId });
+    if (!student) {
+      return res.status(404).json({
+        success: false,
+        message: 'Student profile not found'
+      });
+    }
+
+    // Check if enrolled in the course
+    const enrollment = student.enrolledCourses.find(
+      enrollment => enrollment.course.toString() === courseId
+    );
+
+    res.status(200).json({
+      success: true,
+      data: {
+        isEnrolled: !!enrollment,
+        enrollment: enrollment || null
+      }
+    });
+
+  } catch (error) {
+    console.error('Check enrollment status error:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Failed to check enrollment status'
+    });
+  }
+});
+
 // Update enrollment progress
 router.put('/:enrollmentId/progress', auth, async (req, res) => {
   try {

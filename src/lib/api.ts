@@ -1060,6 +1060,10 @@ async deleteSkill(id: string) {
     return this.request('/enrollments/my');
   }
 
+  async checkEnrollmentStatus(courseId: string) {
+    return this.request(`/enrollments/status/${courseId}`);
+  }
+
   async updateEnrollmentProgress(enrollmentId: string, progress: number) {
     return this.request(`/enrollments/${enrollmentId}/progress`, {
       method: 'PUT',

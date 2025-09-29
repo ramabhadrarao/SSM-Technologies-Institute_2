@@ -1,11 +1,13 @@
 // src/pages/Courses.tsx
 import React, { useState, useEffect } from 'react';
-import { Link } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import { BookOpen, Clock, Users, Star, Filter, Search, ArrowRight, IndianRupee } from 'lucide-react';
 import { apiClient } from '../lib/api';
 import { Course } from '../types';
 import Card from '../components/UI/Card';
 import LoadingSpinner from '../components/UI/LoadingSpinner';
+import { useAuth } from '../contexts/AuthContext';
+import { toast } from 'react-hot-toast';
 
 const Courses: React.FC = () => {
   const [courses, setCourses] = useState<Course[]>([]);
@@ -14,10 +16,46 @@ const Courses: React.FC = () => {
   const [selectedCategory, setSelectedCategory] = useState('all');
   const [sortBy, setSortBy] = useState('name');
   const [priceRange, setPriceRange] = useState('all');
+  const [enrolling, setEnrolling] = useState<string | null>(null);
+  const [enrollmentStatuses, setEnrollmentStatuses] = useState<{[key: string]: boolean}>({});
+  
+  const { user } = useAuth();
+  const navigate = useNavigate();
 
   useEffect(() => {
     fetchCourses();
   }, [sortBy]);
+
+  useEffect(() => {
+    if (user && user.role === 'student' && courses.length > 0) {
+      checkEnrollmentStatuses();
+    }
+  }, [user, courses]);
+
+  const checkEnrollmentStatuses = async () => {
+    if (!user || user.role !== 'student') return;
+    
+    try {
+      const statuses: {[key: string]: boolean} = {};
+      
+      // Check enrollment status for each course
+      await Promise.all(
+        courses.map(async (course) => {
+          try {
+            const response = await apiClient.checkEnrollmentStatus(course._id);
+            statuses[course._id] = response.isEnrolled;
+          } catch (error) {
+            console.error(`Error checking enrollment for course ${course._id}:`, error);
+            statuses[course._id] = false;
+          }
+        })
+      );
+      
+      setEnrollmentStatuses(statuses);
+    } catch (error) {
+      console.error('Error checking enrollment statuses:', error);
+    }
+  };
 
   const fetchCourses = async () => {
     try {
@@ -33,6 +71,43 @@ const Courses: React.FC = () => {
       console.error('Error fetching courses:', error);
     } finally {
       setLoading(false);
+    }
+  };
+
+  const handleEnrollment = async (courseId: string) => {
+    if (!user) {
+      navigate('/login');
+      return;
+    }
+
+    if (user.role !== 'student') {
+      toast.error('Only students can enroll in courses');
+      return;
+    }
+
+    if (enrollmentStatuses[courseId]) {
+      toast.info('You are already enrolled in this course');
+      return;
+    }
+
+    try {
+      setEnrolling(courseId);
+      await apiClient.enrollInCourse(courseId);
+      toast.success('Successfully enrolled in the course!');
+      
+      // Update enrollment status for this course
+      setEnrollmentStatuses(prev => ({
+        ...prev,
+        [courseId]: true
+      }));
+      
+      // Refresh courses to update enrollment count
+      fetchCourses();
+    } catch (error: any) {
+      console.error('Enrollment error:', error);
+      toast.error(error.response?.data?.message || 'Failed to enroll in course');
+    } finally {
+      setEnrolling(null);
     }
   };
 
@@ -261,12 +336,21 @@ const Courses: React.FC = () => {
                         Learn More
                         <ArrowRight className="w-4 h-4 ml-1" />
                       </Link>
-                      <Link
-                        to="/register"
-                        className="bg-gradient-to-r from-blue-600 to-cyan-600 text-white px-4 py-2 rounded-lg text-sm font-medium hover:from-blue-700 hover:to-cyan-700 transition-all duration-200"
+                      <button
+                        onClick={() => handleEnrollment(course._id)}
+                        disabled={enrolling === course._id || (user && user.role === 'student' && enrollmentStatuses[course._id])}
+                        className={`px-4 py-2 rounded-lg text-sm font-medium transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed ${
+                          user && user.role === 'student' && enrollmentStatuses[course._id]
+                            ? 'bg-green-600 text-white hover:bg-green-700'
+                            : 'bg-gradient-to-r from-blue-600 to-cyan-600 text-white hover:from-blue-700 hover:to-cyan-700'
+                        }`}
                       >
-                        Enroll Now
-                      </Link>
+                        {enrolling === course._id ? 'Enrolling...' : 
+                         !user ? 'Login to Enroll' : 
+                         user.role !== 'student' ? 'Student Only' : 
+                         enrollmentStatuses[course._id] ? 'Already Enrolled' :
+                         'Enroll Now'}
+                      </button>
                     </div>
                   </div>
                 </Card>

@@ -29,13 +29,15 @@ const CourseDetail: React.FC = () => {
   const [loading, setLoading] = useState(true);
   const [enrolling, setEnrolling] = useState(false);
   const [selectedTab, setSelectedTab] = useState('overview');
+  const [isEnrolled, setIsEnrolled] = useState(false);
+  const [checkingEnrollment, setCheckingEnrollment] = useState(false);
 
   useEffect(() => {
-    console.log('CourseDetail mounted - User state:', user);
-    console.log('Auth loading state:', authLoading);
-    console.log('Course loading state:', loading);
     if (id) {
       fetchCourse();
+      if (user && user.role === 'student') {
+        checkEnrollmentStatus();
+      }
     }
   }, [id, user]);
 
@@ -51,37 +53,46 @@ const CourseDetail: React.FC = () => {
     }
   };
 
-  const handleEnrollment = async () => {
-    console.log('Enrollment clicked - User state:', user);
-    console.log('User role:', user?.role);
-    console.log('Is user logged in:', !!user);
+  const checkEnrollmentStatus = async () => {
+    if (!user || user.role !== 'student' || !id) return;
     
+    try {
+      setCheckingEnrollment(true);
+      const response = await apiClient.checkEnrollmentStatus(id);
+      setIsEnrolled(response.data.isEnrolled);
+    } catch (error) {
+      console.error('Error checking enrollment status:', error);
+      setIsEnrolled(false);
+    } finally {
+      setCheckingEnrollment(false);
+    }
+  };
+
+  const handleEnrollment = async () => {
     if (!user) {
-      console.log('No user found, redirecting to login');
-      // Redirect to login if not authenticated
-      navigate('/login', { 
-        state: { from: `/courses/${id}` } 
-      });
+      navigate('/login');
       return;
     }
 
     if (user.role !== 'student') {
-      console.log('User is not a student, role:', user.role);
       toast.error('Only students can enroll in courses');
       return;
     }
 
+    if (isEnrolled) {
+      toast.info('You are already enrolled in this course');
+      return;
+    }
+
     try {
-      console.log('Starting enrollment process for course:', id);
       setEnrolling(true);
       await apiClient.enrollInCourse(id!);
-      toast.success('Successfully enrolled in course!');
-      
-      // Refresh course data to update enrollment count
-      fetchCourse();
+      toast.success('Successfully enrolled in the course!');
+      setIsEnrolled(true); // Update enrollment status
+      fetchCourse(); // Refresh course data
     } catch (error: any) {
       console.error('Enrollment error:', error);
-      toast.error(error.message || 'Failed to enroll in course');
+      toast.error(error.response?.data?.message || 'Failed to enroll in course');
     } finally {
       setEnrolling(false);
     }
@@ -420,12 +431,15 @@ const CourseDetail: React.FC = () => {
                 {user && user.role === 'student' ? (
                   <Button 
                     size="lg" 
-                    className="w-full"
+                    className={`w-full ${isEnrolled ? 'bg-green-600 hover:bg-green-700' : ''}`}
                     onClick={handleEnrollment}
-                    disabled={enrolling}
+                    disabled={enrolling || checkingEnrollment || isEnrolled}
                   >
                     <Award className="w-5 h-5 mr-2" />
-                    {enrolling ? 'Enrolling...' : 'Enroll Now'}
+                    {checkingEnrollment ? 'Checking...' : 
+                     enrolling ? 'Enrolling...' : 
+                     isEnrolled ? 'Already Enrolled' : 
+                     'Enroll Now'}
                   </Button>
                 ) : (
                   <Button 
