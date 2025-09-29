@@ -62,6 +62,12 @@ router.post('/change-password',
 
 router.put('/instructor-profile',
   auth,
+  uploadConfigs.profile.fields([
+    { name: 'profileImage', maxCount: 1 },
+    { name: 'resume', maxCount: 1 },
+    { name: 'certificates', maxCount: 10 }
+  ]),
+  handleUploadError,
   instructorController.updateInstructorProfile
 );
 
@@ -69,7 +75,12 @@ router.get('/instructor-profile',
   auth,
   instructorController.getInstructorProfile
 );
-
+router.post('/instructor-file-upload',
+  auth,
+  uploadConfigs.profile.single('file'),
+  handleUploadError,
+  instructorController.uploadInstructorFile
+);
 router.post('/upload-profile-image',
   auth,
   rateLimiters.upload,

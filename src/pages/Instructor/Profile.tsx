@@ -220,60 +220,78 @@ const InstructorProfile: React.FC = () => {
   };
 
   const handleSave = async () => {
-    if (!bio || bio.length < 50) {
-      toast.error('Bio must be at least 50 characters');
-      return;
-    }
-    if (!designation) {
-      toast.error('Please enter your designation');
-      return;
-    }
-    if (selectedSkillIds.length === 0) {
-      toast.error('Please select at least one skill');
-      return;
-    }
+  if (!bio || bio.length < 50) {
+    toast.error('Bio must be at least 50 characters');
+    return;
+  }
+  if (!designation) {
+    toast.error('Please enter your designation');
+    return;
+  }
+  if (selectedSkillIds.length === 0) {
+    toast.error('Please select at least one skill');
+    return;
+  }
 
-    try {
-      setSaving(true);
+  try {
+    setSaving(true);
 
-      let imageUrl = profileData?.instructorProfile?.imageUrl;
-      if (profileImage) {
-        const imageResponse = await apiClient.uploadFile(profileImage, 'profile');
-        imageUrl = imageResponse.url;
+    // Prepare certificate files array
+    const certificateFilesArray: File[] = [];
+    certificates.forEach((cert, index) => {
+      if (certificateFiles[index]) {
+        certificateFilesArray[index] = certificateFiles[index];
       }
+    });
 
-      let resumeUrl = profileData?.instructorProfile?.resumeUrl;
-      if (resumeFile) {
-        const resumeResponse = await apiClient.uploadFile(resumeFile, 'resume');
-        resumeUrl = resumeResponse.url;
-      }
+    // Prepare the profile data
+    const profileData = {
+      bio,
+      designation,
+      experience,
+      specializations,
+      education,
+      certificates,
+      socialLinks,
+      skills: selectedSkillIds
+    };
 
-      const updatedCertificates = [...certificates];
-      for (const [index, file] of Object.entries(certificateFiles)) {
-        const certResponse = await apiClient.uploadFile(file, 'certificate');
-        updatedCertificates[parseInt(index)].url = certResponse.url;
-      }
-
-      const updateData = {
-        bio, designation, experience, specializations,
-        education, certificates: updatedCertificates,
-        socialLinks, imageUrl, resumeUrl,
-        skills: selectedSkillIds
-      };
-
-      await apiClient.updateInstructorProfile(updateData);
-      toast.success('Profile updated successfully!');
-      
-      setTimeout(() => {
-        navigate('/instructor/dashboard');
-      }, 1000);
-    } catch (error: any) {
-      console.error('Error updating profile:', error);
-      toast.error(error.message || 'Failed to update profile');
-    } finally {
-      setSaving(false);
+    // Prepare files object
+    const files: any = {};
+    if (profileImage) {
+      files.profileImage = profileImage;
     }
-  };
+    if (resumeFile) {
+      files.resume = resumeFile;
+    }
+    if (certificateFilesArray.length > 0) {
+      files.certificates = certificateFilesArray;
+    }
+
+    // Update profile with files
+    await apiClient.updateInstructorProfile(profileData, files);
+    
+    toast.success('Profile updated successfully!');
+    
+    // Clear file states after successful upload
+    setProfileImage(null);
+    setResumeFile(null);
+    setCertificateFiles({});
+    
+    // Refresh profile data
+    await fetchProfile();
+    
+    // Navigate to dashboard after a short delay
+    setTimeout(() => {
+      navigate('/instructor/dashboard');
+    }, 1000);
+  } catch (error: any) {
+    console.error('Error updating profile:', error);
+    toast.error(error.message || 'Failed to update profile');
+  } finally {
+    setSaving(false);
+  }
+};
 
   const filteredSkills = availableSkills.filter(skill => {
     const matchesSearch = skill.name.toLowerCase().includes(skillSearchQuery.toLowerCase());

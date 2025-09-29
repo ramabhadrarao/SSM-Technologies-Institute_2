@@ -1,6 +1,7 @@
-// server/controllers/instructorController.js - Updated Version
+// server/controllers/instructorController.js - Complete Updated Version
 const User = require('../models/User');
 const Instructor = require('../models/Instructor');
+const { getFileUrl, deleteFile } = require('../middleware/upload');
 
 // Update instructor profile
 const updateInstructorProfile = async (req, res) => {
@@ -14,8 +15,6 @@ const updateInstructorProfile = async (req, res) => {
       education,
       certificates,
       socialLinks,
-      imageUrl,
-      resumeUrl,
       skills // Array of skill IDs
     } = req.body;
 
@@ -47,17 +46,91 @@ const updateInstructorProfile = async (req, res) => {
     if (designation !== undefined) instructor.designation = designation;
     if (experience !== undefined) instructor.experience = experience;
     if (specializations !== undefined) instructor.specializations = specializations;
-    if (education !== undefined) instructor.education = education;
-    if (certificates !== undefined) instructor.certificates = certificates;
-    if (socialLinks !== undefined) instructor.socialLinks = socialLinks;
-    if (imageUrl !== undefined) instructor.imageUrl = imageUrl;
-    if (resumeUrl !== undefined) instructor.resumeUrl = resumeUrl;
+    if (education !== undefined) {
+      // Parse education if it's a string
+      instructor.education = typeof education === 'string' ? JSON.parse(education) : education;
+    }
+    if (certificates !== undefined) {
+      // Parse certificates if it's a string
+      instructor.certificates = typeof certificates === 'string' ? JSON.parse(certificates) : certificates;
+    }
+    if (socialLinks !== undefined) {
+      // Parse socialLinks if it's a string
+      instructor.socialLinks = typeof socialLinks === 'string' ? JSON.parse(socialLinks) : socialLinks;
+    }
+    
+    // Handle file uploads if they exist in req.files
+    if (req.files) {
+      // Handle profile image
+      if (req.files.profileImage) {
+        // Delete old image if exists
+        if (instructor.imageUrl) {
+          deleteFile(instructor.imageUrl);
+        }
+        instructor.imageUrl = req.files.profileImage[0].path;
+        console.log(`✅ Profile image uploaded: ${req.files.profileImage[0].path}`);
+      }
+      
+      // Handle resume
+      if (req.files.resume) {
+        // Delete old resume if exists
+        if (instructor.resumeUrl) {
+          deleteFile(instructor.resumeUrl);
+        }
+        instructor.resumeUrl = req.files.resume[0].path;
+        console.log(`✅ Resume uploaded: ${req.files.resume[0].path}`);
+      }
+      
+      // Handle certificates
+      if (req.files.certificates) {
+        console.log(`📎 Processing ${req.files.certificates.length} certificate files`);
+        
+        // Map certificate files to the certificates array
+        req.files.certificates.forEach((file, index) => {
+          if (instructor.certificates[index]) {
+            // Delete old certificate file if exists
+            if (instructor.certificates[index].url) {
+              deleteFile(instructor.certificates[index].url);
+            }
+            instructor.certificates[index].url = file.path;
+            console.log(`✅ Certificate ${index} uploaded: ${file.path}`);
+          }
+        });
+      }
+    }
+    
+    // Handle single file uploads (backward compatibility)
+    if (req.file) {
+      // Determine file type based on field name
+      if (req.body.fileType === 'profileImage') {
+        if (instructor.imageUrl) {
+          deleteFile(instructor.imageUrl);
+        }
+        instructor.imageUrl = req.file.path;
+      } else if (req.body.fileType === 'resume') {
+        if (instructor.resumeUrl) {
+          deleteFile(instructor.resumeUrl);
+        }
+        instructor.resumeUrl = req.file.path;
+      }
+    }
     
     // Update skills - store only skill IDs as references
     if (skills !== undefined) {
-      if (Array.isArray(skills)) {
+      let skillArray = skills;
+      
+      // Parse if it's a JSON string
+      if (typeof skills === 'string') {
+        try {
+          skillArray = JSON.parse(skills);
+        } catch (e) {
+          skillArray = skills.split(',').map(s => s.trim());
+        }
+      }
+      
+      if (Array.isArray(skillArray)) {
         // Validate that all items are valid ObjectIds
-        const validSkills = skills.filter(skillId => {
+        const validSkills = skillArray.filter(skillId => {
           return typeof skillId === 'string' && skillId.match(/^[0-9a-fA-F]{24}$/);
         });
         instructor.skills = validSkills;
@@ -74,11 +147,22 @@ const updateInstructorProfile = async (req, res) => {
 
     console.log(`✅ Instructor profile updated successfully: ${userId}`);
 
+    // Add file URLs to response
+    const responseData = instructor.toObject();
+    responseData.imageUrl = getFileUrl(responseData.imageUrl);
+    responseData.resumeUrl = getFileUrl(responseData.resumeUrl);
+    if (responseData.certificates) {
+      responseData.certificates = responseData.certificates.map(cert => ({
+        ...cert,
+        url: getFileUrl(cert.url)
+      }));
+    }
+
     res.json({
       success: true,
       message: 'Instructor profile updated successfully',
       data: {
-        instructorProfile: instructor
+        instructorProfile: responseData
       }
     });
   } catch (error) {
@@ -106,10 +190,21 @@ const getInstructorProfile = async (req, res) => {
       });
     }
 
+    // Add file URLs
+    const responseData = instructor.toObject();
+    responseData.imageUrl = getFileUrl(responseData.imageUrl);
+    responseData.resumeUrl = getFileUrl(responseData.resumeUrl);
+    if (responseData.certificates) {
+      responseData.certificates = responseData.certificates.map(cert => ({
+        ...cert,
+        url: getFileUrl(cert.url)
+      }));
+    }
+
     res.json({
       success: true,
       data: {
-        instructorProfile: instructor
+        instructorProfile: responseData
       }
     });
   } catch (error) {
@@ -117,6 +212,63 @@ const getInstructorProfile = async (req, res) => {
     res.status(500).json({
       success: false,
       message: 'Failed to get instructor profile',
+      error: process.env.NODE_ENV === 'development' ? error.message : undefined
+    });
+  }
+};
+
+// Upload instructor file (for single file uploads)
+const uploadInstructorFile = async (req, res) => {
+  try {
+    const userId = req.user._id;
+    const { fileType } = req.body; // profileImage, resume, or certificate
+    
+    if (!req.file) {
+      return res.status(400).json({
+        success: false,
+        message: 'No file uploaded'
+      });
+    }
+    
+    const instructor = await Instructor.findOne({ user: userId });
+    if (!instructor) {
+      return res.status(404).json({
+        success: false,
+        message: 'Instructor profile not found'
+      });
+    }
+    
+    const fileUrl = getFileUrl(req.file.path);
+    
+    // Update the appropriate field based on file type
+    if (fileType === 'profileImage') {
+      if (instructor.imageUrl) {
+        deleteFile(instructor.imageUrl);
+      }
+      instructor.imageUrl = req.file.path;
+    } else if (fileType === 'resume') {
+      if (instructor.resumeUrl) {
+        deleteFile(instructor.resumeUrl);
+      }
+      instructor.resumeUrl = req.file.path;
+    }
+    
+    await instructor.save();
+    
+    res.json({
+      success: true,
+      message: 'File uploaded successfully',
+      data: {
+        url: fileUrl,
+        path: req.file.path,
+        fileType
+      }
+    });
+  } catch (error) {
+    console.error('Upload instructor file error:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Failed to upload file',
       error: process.env.NODE_ENV === 'development' ? error.message : undefined
     });
   }
@@ -147,9 +299,20 @@ const getPublicInstructorProfile = async (req, res) => {
       });
     }
 
+    // Add file URLs
+    const responseData = instructor.toObject();
+    responseData.imageUrl = getFileUrl(responseData.imageUrl);
+    responseData.resumeUrl = getFileUrl(responseData.resumeUrl);
+    if (responseData.certificates) {
+      responseData.certificates = responseData.certificates.map(cert => ({
+        ...cert,
+        url: getFileUrl(cert.url)
+      }));
+    }
+
     res.json({
       success: true,
-      data: instructor
+      data: responseData
     });
   } catch (error) {
     console.error('Get public instructor profile error:', error);
@@ -233,6 +396,7 @@ const getInstructorStats = async (req, res) => {
 module.exports = {
   updateInstructorProfile,
   getInstructorProfile,
+  uploadInstructorFile,
   getPublicInstructorProfile,
   getInstructorStats
 };

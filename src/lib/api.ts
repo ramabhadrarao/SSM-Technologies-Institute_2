@@ -103,21 +103,87 @@ class ApiClient {
   }
 
   async updateInstructorProfile(profileData: {
-    bio?: string;
-    designation?: string;
-    experience?: number;
-    specializations?: string[];
-    education?: any[];
-    certificates?: any[];
-    socialLinks?: any;
-    imageUrl?: string;
-    resumeUrl?: string;
-  }) {
-    return this.request('/auth/instructor-profile', {
-      method: 'PUT',
-      body: JSON.stringify(profileData),
-    });
+  bio?: string;
+  designation?: string;
+  experience?: number;
+  specializations?: string[];
+  education?: any[];
+  certificates?: any[];
+  socialLinks?: any;
+  skills?: string[];
+}, files?: {
+  profileImage?: File;
+  resume?: File;
+  certificates?: File[];
+}) {
+  const formData = new FormData();
+  
+  // Append text data
+  Object.keys(profileData).forEach(key => {
+    const value = (profileData as any)[key];
+    if (value !== undefined) {
+      if (typeof value === 'object') {
+        formData.append(key, JSON.stringify(value));
+      } else {
+        formData.append(key, value.toString());
+      }
+    }
+  });
+  
+  // Append files
+  if (files) {
+    if (files.profileImage) {
+      formData.append('profileImage', files.profileImage);
+    }
+    if (files.resume) {
+      formData.append('resume', files.resume);
+    }
+    if (files.certificates) {
+      files.certificates.forEach((cert, index) => {
+        if (cert) {
+          formData.append('certificates', cert);
+        }
+      });
+    }
   }
+  
+  const headers = this.token ? { Authorization: `Bearer ${this.token}` } : {};
+  
+  return fetch(`${this.baseURL}/auth/instructor-profile`, {
+    method: 'PUT',
+    headers,
+    body: formData,
+  }).then(async response => {
+    if (!response.ok) {
+      const errorData = await response.json().catch(() => ({ message: 'Network error' }));
+      throw new Error(errorData.message || `HTTP error! status: ${response.status}`);
+    }
+    const data = await response.json();
+    return data.data || data;
+  });
+}
+
+// Add this helper method for single file uploads
+async uploadInstructorFile(file: File, fileType: 'profileImage' | 'resume' | 'certificate') {
+  const formData = new FormData();
+  formData.append('file', file);
+  formData.append('fileType', fileType);
+  
+  const headers = this.token ? { Authorization: `Bearer ${this.token}` } : {};
+  
+  return fetch(`${this.baseURL}/auth/instructor-file-upload`, {
+    method: 'POST',
+    headers,
+    body: formData,
+  }).then(async response => {
+    if (!response.ok) {
+      const errorData = await response.json().catch(() => ({ message: 'Upload failed' }));
+      throw new Error(errorData.message || `Upload error! status: ${response.status}`);
+    }
+    const data = await response.json();
+    return data.data || data;
+  });
+}
 
   async changePassword(passwordData: {
     currentPassword: string;
