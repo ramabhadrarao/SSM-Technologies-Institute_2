@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useAuth } from '../../contexts/AuthContext';
 import Card from '../../components/UI/Card';
@@ -52,7 +52,8 @@ const InstructorCourseManagement: React.FC = () => {
   const [loading, setLoading] = useState(true);
   const [uploading, setUploading] = useState(false);
   const [showUploadModal, setShowUploadModal] = useState(false);
-  const [editingMaterial, setEditingMaterial] = useState<CourseMaterial | null>(null);
+  const [editingMaterial, setEditingMaterial] = useState<any>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
   
   const [uploadForm, setUploadForm] = useState({
     title: '',
@@ -84,7 +85,7 @@ const InstructorCourseManagement: React.FC = () => {
     try {
       setLoading(true);
       const response = await apiClient.get(`/materials/course/${courseId}`);
-      setMaterials(response.data.materials || []);
+      setMaterials(response.data || []);
     } catch (error: any) {
       console.error('Error fetching materials:', error);
       if (error.response?.status !== 404) {
@@ -187,6 +188,10 @@ const InstructorCourseManagement: React.FC = () => {
       externalUrl: '',
       file: null
     });
+    // Reset the file input
+    if (fileInputRef.current) {
+      fileInputRef.current.value = '';
+    }
   };
 
   const getFileIcon = (type: string, mimeType?: string) => {
@@ -339,7 +344,7 @@ const InstructorCourseManagement: React.FC = () => {
                   </label>
                   <input
                     type="text"
-                    value={uploadForm.title}
+                    value={uploadForm.title || ''}
                     onChange={(e) => setUploadForm({ ...uploadForm, title: e.target.value })}
                     className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                     placeholder="Enter material title"
@@ -352,7 +357,7 @@ const InstructorCourseManagement: React.FC = () => {
                     Description
                   </label>
                   <textarea
-                    value={uploadForm.description}
+                    value={uploadForm.description || ''}
                     onChange={(e) => setUploadForm({ ...uploadForm, description: e.target.value })}
                     className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                     rows={3}
@@ -383,7 +388,7 @@ const InstructorCourseManagement: React.FC = () => {
                     </label>
                     <input
                       type="url"
-                      value={uploadForm.externalUrl}
+                      value={uploadForm.externalUrl || ''}
                       onChange={(e) => setUploadForm({ ...uploadForm, externalUrl: e.target.value })}
                       className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                       placeholder={uploadForm.type === 'video' ? 'https://www.youtube.com/watch?v=...' : 'https://example.com'}
@@ -402,6 +407,7 @@ const InstructorCourseManagement: React.FC = () => {
                     </label>
                     <input
                       type="file"
+                      ref={fileInputRef}
                       onChange={(e) => setUploadForm({ ...uploadForm, file: e.target.files?.[0] || null })}
                       className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                       accept={
