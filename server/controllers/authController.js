@@ -387,11 +387,35 @@ const getProfile = async (req, res) => {
         profileData.studentProfile = student;
       }
     } else if (user.role === 'instructor') {
-      const instructor = await Instructor.findOne({ user: user._id })
-        .populate('skills', 'name category');
-      
-      if (instructor) {
-        profileData.instructorProfile = instructor;
+      try {
+        const instructor = await Instructor.findOne({ user: user._id })
+          .populate('skills', 'name category');
+        
+        if (instructor) {
+          profileData.instructorProfile = instructor;
+        } else {
+          // Create instructor profile if it doesn't exist
+          const newInstructor = new Instructor({
+            user: user._id,
+            bio: '',
+            designation: '',
+            experience: 0,
+            skills: [],
+            specializations: [],
+            education: [],
+            socialLinks: {},
+            isApproved: false
+          });
+          await newInstructor.save();
+          profileData.instructorProfile = newInstructor;
+        }
+      } catch (populateError) {
+        console.error('Error populating instructor skills:', populateError);
+        // Fallback: get instructor without population
+        const instructor = await Instructor.findOne({ user: user._id });
+        if (instructor) {
+          profileData.instructorProfile = instructor;
+        }
       }
     }
 

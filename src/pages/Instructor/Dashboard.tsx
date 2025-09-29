@@ -594,7 +594,7 @@ const InstructorDashboard: React.FC = () => {
               <h3 className="text-lg font-semibold text-gray-900 mb-4">Quick Actions</h3>
               <div className="space-y-2">
                 <Link
-                  to="/profile"
+                  to="/instructor/profile"
                   className="flex items-center w-full text-left px-3 py-2 text-sm text-gray-700 hover:bg-gray-50 rounded-lg transition-colors"
                 >
                   <Users className="w-4 h-4 mr-2" />

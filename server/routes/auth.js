@@ -5,6 +5,7 @@ const { validate, registerSchema, loginSchema, updateProfileSchema } = require('
 const { rateLimiters } = require('../middleware/security');
 const { uploadConfigs, handleUploadError } = require('../middleware/upload');
 const authController = require('../controllers/authController');
+const instructorController = require('../controllers/instructorController');
 
 // Public routes
 router.post('/register', 
@@ -57,6 +58,16 @@ router.post('/change-password',
   auth,
   rateLimiters.auth,
   authController.changePassword
+);
+
+router.put('/instructor-profile',
+  auth,
+  instructorController.updateInstructorProfile
+);
+
+router.get('/instructor-profile',
+  auth,
+  instructorController.getInstructorProfile
 );
 
 router.post('/upload-profile-image',

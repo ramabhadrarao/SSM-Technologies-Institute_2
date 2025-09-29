@@ -29,6 +29,7 @@ import AdminSystemSettings from './pages/Admin/SystemSettings';
 import AdminTeamManagement from './pages/Admin/TeamManagement';
 import StudentDashboard from './pages/Student/Dashboard';
 import InstructorDashboard from './pages/Instructor/Dashboard';
+import InstructorProfile from './pages/Instructor/Profile';
 
 function App() {
   return (
@@ -64,6 +65,7 @@ function App() {
               {/* Student & Instructor Routes */}
               <Route path="/student/dashboard" element={<StudentDashboard />} />
               <Route path="/instructor/dashboard" element={<InstructorDashboard />} />
+              <Route path="/instructor/profile" element={<InstructorProfile />} />
             </Routes>
           </main>
           <Footer />

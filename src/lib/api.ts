@@ -102,6 +102,23 @@ class ApiClient {
     });
   }
 
+  async updateInstructorProfile(profileData: {
+    bio?: string;
+    designation?: string;
+    experience?: number;
+    specializations?: string[];
+    education?: any[];
+    certificates?: any[];
+    socialLinks?: any;
+    imageUrl?: string;
+    resumeUrl?: string;
+  }) {
+    return this.request('/auth/instructor-profile', {
+      method: 'PUT',
+      body: JSON.stringify(profileData),
+    });
+  }
+
   async changePassword(passwordData: {
     currentPassword: string;
     newPassword: string;
