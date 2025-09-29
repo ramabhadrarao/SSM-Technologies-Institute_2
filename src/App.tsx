@@ -45,10 +45,10 @@ function App() {
               <Routes>
                 {/* Public Routes */}
                 <Route path="/" element={<Home />} />
+                <Route path="/about" element={<About />} />
                 <Route path="/courses" element={<Courses />} />
                 <Route path="/courses/:id" element={<CourseDetail />} />
                 <Route path="/subjects" element={<Subjects />} />
-                <Route path="/about" element={<About />} />
                 <Route path="/contact" element={<Contact />} />
                 <Route path="/login" element={<Login />} />
                 <Route path="/register" element={<Register />} />
@@ -57,7 +57,7 @@ function App() {
                 
                 {/* Under Development Route */}
                 <Route path="/under-development" element={<UnderDevelopment />} />
-                
+
                 {/* Admin Routes */}
                 <Route path="/admin/dashboard" element={<AdminDashboard />} />
                 <Route path="/admin/users" element={<AdminUsersManagement />} />
@@ -68,12 +68,12 @@ function App() {
                 <Route path="/admin/messages" element={<AdminMessagesManagement />} />
                 <Route path="/admin/reports" element={<AdminReportsAnalytics />} />
                 <Route path="/admin/settings" element={<AdminSystemSettings />} />
-                
+
                 {/* Student & Instructor Routes */}
                 <Route path="/student/dashboard" element={<StudentDashboard />} />
                 <Route path="/instructor/dashboard" element={<InstructorDashboard />} />
                 <Route path="/instructor/profile" element={<InstructorProfile />} />
-                
+
                 {/* Catch-all route for undefined paths */}
                 <Route path="*" element={<UnderDevelopment />} />
               </Routes>
