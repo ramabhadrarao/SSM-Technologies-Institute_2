@@ -631,6 +631,39 @@ async deleteSkill(id: string) {
     return this.request('/admin/courses/instructors');
   }
 
+  // ========== COURSE MATERIALS MANAGEMENT ==========
+  async get(endpoint: string) {
+    return this.request(endpoint);
+  }
+
+  async post(endpoint: string, data: any, options?: { headers?: Record<string, string> }) {
+    const isFormData = data instanceof FormData;
+    const headers = isFormData ? {} : { 'Content-Type': 'application/json' };
+    
+    return this.request(endpoint, {
+      method: 'POST',
+      headers: { ...headers, ...options?.headers },
+      body: isFormData ? data : JSON.stringify(data),
+    });
+  }
+
+  async put(endpoint: string, data: any, options?: { headers?: Record<string, string> }) {
+    const isFormData = data instanceof FormData;
+    const headers = isFormData ? {} : { 'Content-Type': 'application/json' };
+    
+    return this.request(endpoint, {
+      method: 'PUT',
+      headers: { ...headers, ...options?.headers },
+      body: isFormData ? data : JSON.stringify(data),
+    });
+  }
+
+  async delete(endpoint: string) {
+    return this.request(endpoint, {
+      method: 'DELETE',
+    });
+  }
+
   // ========== ADMIN BATCH MANAGEMENT ==========
   async getAdminBatches(params?: {
     page?: number;

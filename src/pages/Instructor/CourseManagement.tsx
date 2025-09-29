@@ -103,12 +103,14 @@ const InstructorCourseManagement: React.FC = () => {
       return;
     }
 
-    if (uploadForm.type === 'link' && !uploadForm.externalUrl.trim()) {
-      toast.error('Please enter a URL');
-      return;
+    if (uploadForm.type === 'link' || uploadForm.type === 'video') {
+      if (!uploadForm.externalUrl.trim()) {
+        toast.error(uploadForm.type === 'video' ? 'Please enter a YouTube URL' : 'Please enter a URL');
+        return;
+      }
     }
 
-    if (uploadForm.type !== 'link' && !uploadForm.file) {
+    if (uploadForm.type !== 'link' && uploadForm.type !== 'video' && !uploadForm.file) {
       toast.error('Please select a file');
       return;
     }
@@ -120,7 +122,7 @@ const InstructorCourseManagement: React.FC = () => {
       formData.append('description', uploadForm.description);
       formData.append('type', uploadForm.type);
       
-      if (uploadForm.type === 'link') {
+      if (uploadForm.type === 'link' || uploadForm.type === 'video') {
         formData.append('externalUrl', uploadForm.externalUrl);
       } else if (uploadForm.file) {
         formData.append('file', uploadForm.file);
@@ -368,25 +370,30 @@ const InstructorCourseManagement: React.FC = () => {
                     className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                   >
                     <option value="document">Document</option>
-                    <option value="video">Video</option>
+                    <option value="video">Video (YouTube Link)</option>
                     <option value="image">Image</option>
                     <option value="link">External Link</option>
                   </select>
                 </div>
 
-                {uploadForm.type === 'link' ? (
+                {uploadForm.type === 'link' || uploadForm.type === 'video' ? (
                   <div>
                     <label className="block text-sm font-medium text-gray-700 mb-1">
-                      URL *
+                      {uploadForm.type === 'video' ? 'YouTube URL *' : 'URL *'}
                     </label>
                     <input
                       type="url"
                       value={uploadForm.externalUrl}
                       onChange={(e) => setUploadForm({ ...uploadForm, externalUrl: e.target.value })}
                       className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                      placeholder="https://example.com"
+                      placeholder={uploadForm.type === 'video' ? 'https://www.youtube.com/watch?v=...' : 'https://example.com'}
                       required
                     />
+                    {uploadForm.type === 'video' && (
+                      <p className="text-xs text-gray-500 mt-1">
+                        Enter a YouTube video URL
+                      </p>
+                    )}
                   </div>
                 ) : (
                   <div>
@@ -399,7 +406,6 @@ const InstructorCourseManagement: React.FC = () => {
                       className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                       accept={
                         uploadForm.type === 'image' ? 'image/*' :
-                        uploadForm.type === 'video' ? 'video/*' :
                         '.pdf,.doc,.docx,.ppt,.pptx,.xls,.xlsx,.txt'
                       }
                       required={!editingMaterial}

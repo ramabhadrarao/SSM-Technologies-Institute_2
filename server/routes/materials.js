@@ -111,11 +111,11 @@ router.post('/upload/:courseId',
         order: order ? parseInt(order) : 0
       };
 
-      if (type === 'link') {
+      if (type === 'link' || type === 'video') {
         if (!externalUrl) {
           return res.status(400).json({
             success: false,
-            message: 'External URL is required for link type materials'
+            message: `External URL is required for ${type} type materials`
           });
         }
         materialData.externalUrl = externalUrl;

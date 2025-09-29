@@ -28,13 +28,13 @@ const courseMaterialSchema = new mongoose.Schema({
   fileUrl: {
     type: String,
     required: function() {
-      return this.type !== 'link';
+      return this.type !== 'link' && this.type !== 'video';
     }
   },
   externalUrl: {
     type: String,
     required: function() {
-      return this.type === 'link';
+      return this.type === 'link' || this.type === 'video';
     }
   },
   fileName: {
