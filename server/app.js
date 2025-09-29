@@ -15,6 +15,7 @@ const adminRoutes = require('./routes/admin');
 const contactRoutes = require('./routes/contact'); // New public contact route
 const teamRoutes = require('./routes/team'); // Public team routes
 const skillRoutes = require('./routes/skills');
+const uploadRoutes = require('./routes/upload'); // General upload routes
 const app = express();
 
 // Connect to database
@@ -68,6 +69,7 @@ app.use('/api/admin', adminRoutes);
 app.use('/api/contact', contactRoutes); // Public contact form
 app.use('/api/team', teamRoutes); // Public team members
 app.use('/api/skills', skillRoutes);
+app.use('/api/upload', uploadRoutes); // General file upload
 // 404 handler
 app.use('*', (req, res) => {
   res.status(404).json({
