@@ -137,9 +137,23 @@ const createCourse = async (req, res) => {
     if (req.user.role === 'instructor') {
       const Instructor = require('../models/Instructor');
       const instructor = await Instructor.findOne({ user: req.user._id });
-      if (instructor) {
-        courseData.instructor = instructor._id;
+      
+      if (!instructor) {
+        return res.status(404).json({
+          success: false,
+          message: 'Instructor profile not found'
+        });
       }
+
+      // Check if instructor is approved
+      if (!instructor.isApproved) {
+        return res.status(403).json({
+          success: false,
+          message: 'Access denied. Your instructor account is pending approval. Please wait for admin approval to create courses.'
+        });
+      }
+
+      courseData.instructor = instructor._id;
     }
 
     const course = new Course(courseData);
@@ -185,7 +199,23 @@ const updateCourse = async (req, res) => {
     if (req.user.role === 'instructor') {
       const Instructor = require('../models/Instructor');
       const instructor = await Instructor.findOne({ user: req.user._id });
-      if (!instructor || course.instructor.toString() !== instructor._id.toString()) {
+      
+      if (!instructor) {
+        return res.status(404).json({
+          success: false,
+          message: 'Instructor profile not found'
+        });
+      }
+
+      // Check if instructor is approved
+      if (!instructor.isApproved) {
+        return res.status(403).json({
+          success: false,
+          message: 'Access denied. Your instructor account is pending approval. Please wait for admin approval to update courses.'
+        });
+      }
+
+      if (course.instructor.toString() !== instructor._id.toString()) {
         return res.status(403).json({
           success: false,
           message: 'Access denied'

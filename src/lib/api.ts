@@ -205,6 +205,12 @@ class ApiClient {
     }).then(async response => {
       if (!response.ok) {
         const errorData = await response.json().catch(() => ({ message: 'Network error' }));
+        
+        // Handle instructor approval restriction errors
+        if (response.status === 403 && errorData.message?.includes('pending approval')) {
+          throw new Error('Your instructor account is pending approval. Please wait for admin approval to create courses.');
+        }
+        
         throw new Error(errorData.message || `HTTP error! status: ${response.status}`);
       }
       const data = await response.json();
@@ -222,6 +228,12 @@ class ApiClient {
     }).then(async response => {
       if (!response.ok) {
         const errorData = await response.json().catch(() => ({ message: 'Network error' }));
+        
+        // Handle instructor approval restriction errors
+        if (response.status === 403 && errorData.message?.includes('pending approval')) {
+          throw new Error('Your instructor account is pending approval. Please wait for admin approval to update courses.');
+        }
+        
         throw new Error(errorData.message || `HTTP error! status: ${response.status}`);
       }
       const data = await response.json();
@@ -281,6 +293,12 @@ class ApiClient {
     }).then(async response => {
       if (!response.ok) {
         const errorData = await response.json().catch(() => ({ message: 'Network error' }));
+        
+        // Handle instructor approval restriction errors
+        if (response.status === 403 && errorData.message?.includes('pending approval')) {
+          throw new Error('Your instructor account is pending approval. Please wait for admin approval to create subjects.');
+        }
+        
         throw new Error(errorData.message || `HTTP error! status: ${response.status}`);
       }
       const data = await response.json();
@@ -298,6 +316,12 @@ class ApiClient {
     }).then(async response => {
       if (!response.ok) {
         const errorData = await response.json().catch(() => ({ message: 'Network error' }));
+        
+        // Handle instructor approval restriction errors
+        if (response.status === 403 && errorData.message?.includes('pending approval')) {
+          throw new Error('Your instructor account is pending approval. Please wait for admin approval to update subjects.');
+        }
+        
         throw new Error(errorData.message || `HTTP error! status: ${response.status}`);
       }
       const data = await response.json();

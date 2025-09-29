@@ -243,11 +243,39 @@ const getInstructorDashboard = async (req, res) => {
       });
     }
 
-    // Get courses taught by this instructor
+    // Check if instructor is approved
+    if (!instructor.isApproved) {
+      // Return limited data for unapproved instructors
+      return res.json({
+        success: true,
+        data: {
+          instructor: {
+            name: `${instructor.user.firstName} ${instructor.user.lastName}`,
+            designation: instructor.designation,
+            experience: instructor.experience,
+            rating: instructor.rating || 0,
+            totalStudents: 0,
+            isApproved: false,
+            bio: instructor.bio
+          },
+          stats: {
+            totalCourses: 0,
+            totalBatches: 0,
+            totalStudents: 0,
+            avgRating: 0
+          },
+          courses: [],
+          upcomingClasses: [],
+          batches: []
+        }
+      });
+    }
+
+    // Get courses taught by this instructor (only for approved instructors)
     const courses = await Course.find({ instructor: instructor._id, isActive: true })
       .select('name enrollmentCount rating reviews');
 
-    // Get batches taught by this instructor
+    // Get batches taught by this instructor (only for approved instructors)
     const batches = await Batch.find({ instructor: instructor._id, isActive: true })
       .populate('course', 'name')
       .select('name course enrolledStudents schedule');
@@ -283,7 +311,8 @@ const getInstructorDashboard = async (req, res) => {
         designation: instructor.designation,
         experience: instructor.experience,
         rating: instructor.rating || 0,
-        totalStudents: instructor.totalStudents || totalStudents
+        totalStudents: instructor.totalStudents || totalStudents,
+        isApproved: instructor.isApproved
       },
       stats: {
         totalCourses,

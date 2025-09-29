@@ -110,6 +110,26 @@ router.post('/',
     try {
       const { name, description, course, syllabus } = req.body;
       
+      // Check if instructor is approved (if user is instructor)
+      if (req.user.role === 'instructor') {
+        const Instructor = require('../models/Instructor');
+        const instructor = await Instructor.findOne({ user: req.user._id });
+        
+        if (!instructor) {
+          return res.status(404).json({
+            success: false,
+            message: 'Instructor profile not found'
+          });
+        }
+
+        if (!instructor.isApproved) {
+          return res.status(403).json({
+            success: false,
+            message: 'Access denied. Your instructor account is pending approval. Please wait for admin approval to create subjects.'
+          });
+        }
+      }
+      
       const subjectData = {
         name,
         description,
@@ -161,6 +181,26 @@ router.put('/:id',
           success: false,
           message: 'Subject not found'
         });
+      }
+
+      // Check if instructor is approved (if user is instructor)
+      if (req.user.role === 'instructor') {
+        const Instructor = require('../models/Instructor');
+        const instructor = await Instructor.findOne({ user: req.user._id });
+        
+        if (!instructor) {
+          return res.status(404).json({
+            success: false,
+            message: 'Instructor profile not found'
+          });
+        }
+
+        if (!instructor.isApproved) {
+          return res.status(403).json({
+            success: false,
+            message: 'Access denied. Your instructor account is pending approval. Please wait for admin approval to update subjects.'
+          });
+        }
       }
 
       // Update fields
