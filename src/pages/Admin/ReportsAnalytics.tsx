@@ -174,7 +174,6 @@ const AdminReportsAnalytics: React.FC = () => {
       toast.success('Report generated successfully');
       
       // Here you would typically download the report or show it in a new tab
-      console.log('Generated report:', response);
     } catch (error: any) {
       toast.error(error.message || 'Failed to generate report');
     } finally {
