@@ -197,9 +197,9 @@ const Contact: React.FC = () => {
         subject: formData.subject.trim(),
         message: formData.message.trim(),
         captchaToken: `alternative-captcha-${captchaType}-${captchaAnswer || 'verified'}`,
-        formStartTime: formStartTime.toString(),
-        interactionCount,
-        agreeToTerms: formData.agreeToTerms
+        formStartTime: formStartTime.toString()
+        // interactionCount,
+        // agreeToTerms: formData.agreeToTerms
       };
 
       await apiClient.createContactMessage(submissionData);
