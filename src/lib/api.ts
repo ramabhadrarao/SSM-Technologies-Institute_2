@@ -633,6 +633,8 @@ async deleteSkill(id: string) {
 
   // Add these methods to the ApiClient class in src/lib/api.ts
 
+// Add these methods to the ApiClient class in src/lib/api.ts
+
 // ========== COURSE MATERIALS METHODS ==========
 async getCourseMaterials(courseId: string) {
   return this.request(`/materials/course/${courseId}`);
@@ -681,7 +683,6 @@ async deleteCourseMaterial(materialId: string) {
 async downloadCourseMaterial(materialId: string) {
   return this.request(`/materials/download/${materialId}`);
 }
-
   // ========== ADMIN BATCH MANAGEMENT ==========
   async getAdminBatches(params?: {
     page?: number;

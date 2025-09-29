@@ -87,15 +87,19 @@ const InstructorCourseManagement: React.FC = () => {
   const fetchMaterials = async () => {
     try {
       setLoading(true);
-      const response = await apiClient.get(`/materials/course/${courseId}`);
+      // Use the request method directly
+      const response = await apiClient.getCourseMaterials(courseId!);
       setMaterials(Array.isArray(response) ? response : response.data || []);
     } catch (error: any) {
       console.error('Error fetching materials:', error);
-      if (error.response?.status === 403) {
+      if (error.message?.includes('403') || error.response?.status === 403) {
         toast.error('You do not have permission to view these materials');
         navigate('/instructor/dashboard');
       } else if (error.response?.status !== 404) {
-        toast.error('Failed to load course materials');
+        // Don't show error for 404 (no materials yet)
+        if (!error.message?.includes('404')) {
+          toast.error('Failed to load course materials');
+        }
       }
       setMaterials([]);
     } finally {
@@ -148,11 +152,11 @@ const InstructorCourseManagement: React.FC = () => {
 
       if (editingMaterial) {
         // Update existing material
-        await apiClient.put(`/materials/${editingMaterial._id}`, formData);
+        await apiClient.updateCourseMaterial(editingMaterial._id, formData);
         toast.success('Material updated successfully');
       } else {
-        // Create new material - Fixed endpoint
-        await apiClient.post(`/materials/upload/${courseId}`, formData);
+        // Create new material
+        await apiClient.uploadCourseMaterial(courseId!, formData);
         toast.success('Material uploaded successfully');
       }
 
@@ -164,16 +168,14 @@ const InstructorCourseManagement: React.FC = () => {
       console.error('Error uploading material:', error);
       
       // Handle specific error messages
-      if (error.response?.status === 403) {
-        if (error.response?.data?.message?.includes('pending approval')) {
-          toast.error('Your instructor account is pending approval. Please wait for admin approval to upload materials.');
-        } else {
-          toast.error('You do not have permission to upload materials to this course');
-        }
-      } else if (error.response?.status === 404) {
+      if (error.message?.includes('pending approval')) {
+        toast.error('Your instructor account is pending approval. Please wait for admin approval to upload materials.');
+      } else if (error.message?.includes('do not have permission')) {
+        toast.error('You do not have permission to upload materials to this course');
+      } else if (error.message?.includes('not found')) {
         toast.error('Course not found');
       } else {
-        toast.error(error.response?.data?.message || error.message || 'Failed to upload material');
+        toast.error(error.message || 'Failed to upload material');
       }
     } finally {
       setUploading(false);
@@ -186,7 +188,7 @@ const InstructorCourseManagement: React.FC = () => {
     }
 
     try {
-      await apiClient.delete(`/materials/${materialId}`);
+      await apiClient.deleteCourseMaterial(materialId);
       toast.success('Material deleted successfully');
       fetchMaterials();
     } catch (error: any) {
@@ -210,13 +212,13 @@ const InstructorCourseManagement: React.FC = () => {
 
   const handleViewMaterial = async (material: CourseMaterial) => {
     try {
-      const response = await apiClient.get(`/materials/download/${material._id}`);
+      const response = await apiClient.downloadCourseMaterial(material._id);
       
-      if (response.data) {
-        if (response.data.type === 'link' || response.data.type === 'video') {
-          window.open(response.data.url, '_blank');
-        } else if (response.data.type === 'file') {
-          window.open(response.data.url, '_blank');
+      if (response) {
+        if (response.type === 'link' || response.type === 'video') {
+          window.open(response.url, '_blank');
+        } else if (response.type === 'file') {
+          window.open(response.url, '_blank');
         }
       }
     } catch (error) {
@@ -468,7 +470,7 @@ const InstructorCourseManagement: React.FC = () => {
                         fileInputRef.current.value = '';
                       }
                     }}
-                    className="w-full px-3 py-2 border border-gray-rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                   >
                     <option value="document">Document (PDF, Word, etc.)</option>
                     <option value="video">Video (YouTube Link)</option>
