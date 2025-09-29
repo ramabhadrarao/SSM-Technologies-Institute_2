@@ -43,7 +43,7 @@ const Register: React.FC = () => {
         firstName: data.firstName,
         lastName: data.lastName,
         phone: data.phone,
-        whatsapp: data.whatsapp || data.phone,
+        whatsapp: data.whatsapp && data.whatsapp.trim() !== '' ? data.whatsapp : data.phone,
         role: data.role,
       };
 
