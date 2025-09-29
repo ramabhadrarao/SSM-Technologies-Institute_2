@@ -38,14 +38,16 @@ const Register: React.FC = () => {
     setLoading(true);
     try {
       const userData = {
-        first_name: data.firstName,
-        last_name: data.lastName,
+        email: data.email,
+        password: data.password,
+        firstName: data.firstName,
+        lastName: data.lastName,
         phone: data.phone,
         whatsapp: data.whatsapp || data.phone,
         role: data.role,
       };
 
-      const { error } = await signUp(data.email, data.password, userData);
+      const { error } = await signUp(userData);
       
       if (error) {
         toast.error(error.message);
