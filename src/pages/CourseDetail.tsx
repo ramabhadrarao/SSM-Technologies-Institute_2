@@ -24,17 +24,20 @@ import { toast } from 'react-hot-toast';
 const CourseDetail: React.FC = () => {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
-  const { user } = useAuth();
+  const { user, loading: authLoading } = useAuth();
   const [course, setCourse] = useState<Course | null>(null);
   const [loading, setLoading] = useState(true);
   const [enrolling, setEnrolling] = useState(false);
   const [selectedTab, setSelectedTab] = useState('overview');
 
   useEffect(() => {
+    console.log('CourseDetail mounted - User state:', user);
+    console.log('Auth loading state:', authLoading);
+    console.log('Course loading state:', loading);
     if (id) {
       fetchCourse();
     }
-  }, [id]);
+  }, [id, user]);
 
   const fetchCourse = async () => {
     try {
@@ -49,20 +52,27 @@ const CourseDetail: React.FC = () => {
   };
 
   const handleEnrollment = async () => {
+    console.log('Enrollment clicked - User state:', user);
+    console.log('User role:', user?.role);
+    console.log('Is user logged in:', !!user);
+    
     if (!user) {
+      console.log('No user found, redirecting to login');
       // Redirect to login if not authenticated
-      navigate('/auth/login', { 
+      navigate('/login', { 
         state: { from: `/courses/${id}` } 
       });
       return;
     }
 
     if (user.role !== 'student') {
+      console.log('User is not a student, role:', user.role);
       toast.error('Only students can enroll in courses');
       return;
     }
 
     try {
+      console.log('Starting enrollment process for course:', id);
       setEnrolling(true);
       await apiClient.enrollInCourse(id!);
       toast.success('Successfully enrolled in course!');

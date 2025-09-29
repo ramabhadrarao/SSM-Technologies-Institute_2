@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Link, useNavigate } from 'react-router-dom';
+import { Link, useNavigate, useLocation } from 'react-router-dom';
 import { useForm } from 'react-hook-form';
 import { Mail, Lock, Eye, EyeOff } from 'lucide-react';
 import { useAuth } from '../../contexts/AuthContext';
@@ -16,6 +16,7 @@ const Login: React.FC = () => {
   const [loading, setLoading] = useState(false);
   const { signIn } = useAuth();
   const navigate = useNavigate();
+  const location = useLocation();
 
   const {
     register,
@@ -32,7 +33,9 @@ const Login: React.FC = () => {
         toast.error(error.message);
       } else {
         toast.success('Signed in successfully!');
-        navigate('/');
+        // Redirect to the original page or home
+        const from = location.state?.from || '/';
+        navigate(from);
       }
     } catch (error) {
       toast.error('An error occurred during sign in');
