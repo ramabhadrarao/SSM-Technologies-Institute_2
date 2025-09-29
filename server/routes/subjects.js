@@ -9,7 +9,7 @@ const Subject = require('../models/Subject');
 
 // Get all subjects (public)
 router.get('/',
-  rateLimiters.general,
+  rateLimiters.public,
   optionalAuth,
   async (req, res) => {
     try {

@@ -8,13 +8,13 @@ const courseController = require('../controllers/courseController');
 
 // Public routes
 router.get('/',
-  rateLimiters.general,
+  rateLimiters.public,
   optionalAuth,
   courseController.getCourses
 );
 
 router.get('/:id',
-  rateLimiters.general,
+  rateLimiters.public,
   optionalAuth,
   courseController.getCourse
 );

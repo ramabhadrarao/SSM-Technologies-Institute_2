@@ -6,7 +6,7 @@ const { getPublicTeamMembers } = require('../controllers/adminTeamController');
 
 // Public route to get active team members for About page
 router.get('/',
-  rateLimiters.general,
+  rateLimiters.public,
   getPublicTeamMembers
 );
 

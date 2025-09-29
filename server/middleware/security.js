@@ -196,12 +196,19 @@ const errorHandler = (err, req, res, next) => {
   });
 };
 
+// Public routes middleware (no rate limiting)
+const publicRouteMiddleware = (req, res, next) => {
+  // Simply pass through without any rate limiting
+  next();
+};
+
 module.exports = {
   rateLimiters: {
     general: createRateLimiter('general'),
     auth: createRateLimiter('auth'),
     upload: createRateLimiter('upload'),
-    contact: createRateLimiter('contact')
+    contact: createRateLimiter('contact'),
+    public: publicRouteMiddleware // New middleware for public routes
   },
   securityHeaders,
   sanitizeInput,
