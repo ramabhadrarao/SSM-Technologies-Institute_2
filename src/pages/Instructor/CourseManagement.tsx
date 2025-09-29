@@ -14,7 +14,9 @@ import {
   Eye,
   Plus,
   ArrowLeft,
-  AlertCircle
+  AlertCircle,
+  Link as LinkIcon,
+  ExternalLink
 } from 'lucide-react';
 import { toast } from 'react-hot-toast';
 import { apiClient } from '../../lib/api';
@@ -40,7 +42,7 @@ interface Course {
   _id: string;
   name: string;
   description: string;
-  enrollments: number;
+  enrollmentCount?: number;
 }
 
 const InstructorCourseManagement: React.FC = () => {
@@ -52,7 +54,7 @@ const InstructorCourseManagement: React.FC = () => {
   const [loading, setLoading] = useState(true);
   const [uploading, setUploading] = useState(false);
   const [showUploadModal, setShowUploadModal] = useState(false);
-  const [editingMaterial, setEditingMaterial] = useState<any>(null);
+  const [editingMaterial, setEditingMaterial] = useState<CourseMaterial | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   
   const [uploadForm, setUploadForm] = useState({
@@ -60,7 +62,8 @@ const InstructorCourseManagement: React.FC = () => {
     description: '',
     type: 'document' as 'document' | 'video' | 'image' | 'link',
     externalUrl: '',
-    file: null as File | null
+    file: null as File | null,
+    order: 0
   });
 
   useEffect(() => {
@@ -73,7 +76,7 @@ const InstructorCourseManagement: React.FC = () => {
   const fetchCourseDetails = async () => {
     try {
       const response = await apiClient.getCourse(courseId!);
-      setCourse(response.data);
+      setCourse(response);
     } catch (error: any) {
       console.error('Error fetching course:', error);
       toast.error('Failed to load course details');
@@ -85,12 +88,16 @@ const InstructorCourseManagement: React.FC = () => {
     try {
       setLoading(true);
       const response = await apiClient.get(`/materials/course/${courseId}`);
-      setMaterials(response.data || []);
+      setMaterials(Array.isArray(response) ? response : response.data || []);
     } catch (error: any) {
       console.error('Error fetching materials:', error);
-      if (error.response?.status !== 404) {
+      if (error.response?.status === 403) {
+        toast.error('You do not have permission to view these materials');
+        navigate('/instructor/dashboard');
+      } else if (error.response?.status !== 404) {
         toast.error('Failed to load course materials');
       }
+      setMaterials([]);
     } finally {
       setLoading(false);
     }
@@ -109,19 +116,29 @@ const InstructorCourseManagement: React.FC = () => {
         toast.error(uploadForm.type === 'video' ? 'Please enter a YouTube URL' : 'Please enter a URL');
         return;
       }
-    }
-
-    if (uploadForm.type !== 'link' && uploadForm.type !== 'video' && !uploadForm.file) {
-      toast.error('Please select a file');
-      return;
+      // Validate YouTube URL for video type
+      if (uploadForm.type === 'video') {
+        const youtubeRegex = /^(https?:\/\/)?(www\.)?(youtube\.com\/(watch\?v=|embed\/)|youtu\.be\/)[\w-]+/;
+        if (!youtubeRegex.test(uploadForm.externalUrl)) {
+          toast.error('Please enter a valid YouTube URL');
+          return;
+        }
+      }
+    } else {
+      // For document and image types, file is required when creating new
+      if (!editingMaterial && !uploadForm.file) {
+        toast.error('Please select a file');
+        return;
+      }
     }
 
     try {
       setUploading(true);
       const formData = new FormData();
       formData.append('title', uploadForm.title);
-      formData.append('description', uploadForm.description);
+      formData.append('description', uploadForm.description || '');
       formData.append('type', uploadForm.type);
+      formData.append('order', uploadForm.order.toString());
       
       if (uploadForm.type === 'link' || uploadForm.type === 'video') {
         formData.append('externalUrl', uploadForm.externalUrl);
@@ -130,14 +147,12 @@ const InstructorCourseManagement: React.FC = () => {
       }
 
       if (editingMaterial) {
-        await apiClient.put(`/materials/${editingMaterial._id}`, formData, {
-          headers: { 'Content-Type': 'multipart/form-data' }
-        });
+        // Update existing material
+        await apiClient.put(`/materials/${editingMaterial._id}`, formData);
         toast.success('Material updated successfully');
       } else {
-        await apiClient.post(`/materials/course/${courseId}`, formData, {
-          headers: { 'Content-Type': 'multipart/form-data' }
-        });
+        // Create new material - Fixed endpoint
+        await apiClient.post(`/materials/upload/${courseId}`, formData);
         toast.success('Material uploaded successfully');
       }
 
@@ -147,7 +162,19 @@ const InstructorCourseManagement: React.FC = () => {
       fetchMaterials();
     } catch (error: any) {
       console.error('Error uploading material:', error);
-      toast.error(error.response?.data?.message || 'Failed to upload material');
+      
+      // Handle specific error messages
+      if (error.response?.status === 403) {
+        if (error.response?.data?.message?.includes('pending approval')) {
+          toast.error('Your instructor account is pending approval. Please wait for admin approval to upload materials.');
+        } else {
+          toast.error('You do not have permission to upload materials to this course');
+        }
+      } else if (error.response?.status === 404) {
+        toast.error('Course not found');
+      } else {
+        toast.error(error.response?.data?.message || error.message || 'Failed to upload material');
+      }
     } finally {
       setUploading(false);
     }
@@ -172,12 +199,30 @@ const InstructorCourseManagement: React.FC = () => {
     setEditingMaterial(material);
     setUploadForm({
       title: material.title,
-      description: material.description,
+      description: material.description || '',
       type: material.type,
       externalUrl: material.externalUrl || '',
-      file: null
+      file: null,
+      order: material.order || 0
     });
     setShowUploadModal(true);
+  };
+
+  const handleViewMaterial = async (material: CourseMaterial) => {
+    try {
+      const response = await apiClient.get(`/materials/download/${material._id}`);
+      
+      if (response.data) {
+        if (response.data.type === 'link' || response.data.type === 'video') {
+          window.open(response.data.url, '_blank');
+        } else if (response.data.type === 'file') {
+          window.open(response.data.url, '_blank');
+        }
+      }
+    } catch (error) {
+      console.error('Error viewing material:', error);
+      toast.error('Failed to open material');
+    }
   };
 
   const resetUploadForm = () => {
@@ -186,7 +231,8 @@ const InstructorCourseManagement: React.FC = () => {
       description: '',
       type: 'document',
       externalUrl: '',
-      file: null
+      file: null,
+      order: 0
     });
     // Reset the file input
     if (fileInputRef.current) {
@@ -195,10 +241,16 @@ const InstructorCourseManagement: React.FC = () => {
   };
 
   const getFileIcon = (type: string, mimeType?: string) => {
-    if (type === 'video') return <Video className="w-5 h-5 text-red-500" />;
-    if (type === 'image') return <Image className="w-5 h-5 text-green-500" />;
-    if (type === 'link') return <Eye className="w-5 h-5 text-blue-500" />;
-    return <FileText className="w-5 h-5 text-gray-500" />;
+    switch(type) {
+      case 'video':
+        return <Video className="w-5 h-5 text-red-500" />;
+      case 'image':
+        return <Image className="w-5 h-5 text-green-500" />;
+      case 'link':
+        return <LinkIcon className="w-5 h-5 text-blue-500" />;
+      default:
+        return <FileText className="w-5 h-5 text-gray-500" />;
+    }
   };
 
   const formatFileSize = (bytes?: number) => {
@@ -206,6 +258,17 @@ const InstructorCourseManagement: React.FC = () => {
     const sizes = ['Bytes', 'KB', 'MB', 'GB'];
     const i = Math.floor(Math.log(bytes) / Math.log(1024));
     return Math.round(bytes / Math.pow(1024, i) * 100) / 100 + ' ' + sizes[i];
+  };
+
+  const getAcceptedFileTypes = () => {
+    switch(uploadForm.type) {
+      case 'image':
+        return 'image/*';
+      case 'document':
+        return '.pdf,.doc,.docx,.ppt,.pptx,.xls,.xlsx,.txt';
+      default:
+        return '*/*';
+    }
   };
 
   if (loading) {
@@ -241,7 +304,9 @@ const InstructorCourseManagement: React.FC = () => {
               {course && (
                 <div className="mt-2">
                   <h2 className="text-xl text-gray-600">{course.name}</h2>
-                  <p className="text-sm text-gray-500">{course.enrollments} students enrolled</p>
+                  <p className="text-sm text-gray-500">
+                    {course.enrollmentCount || 0} students enrolled
+                  </p>
                 </div>
               )}
             </div>
@@ -296,11 +361,21 @@ const InstructorCourseManagement: React.FC = () => {
                           <p className="text-sm text-gray-600 mt-1">{material.description}</p>
                         )}
                         <div className="flex items-center space-x-4 mt-2 text-xs text-gray-500">
-                          <span>Type: {material.type}</span>
+                          <span className="capitalize">Type: {material.type}</span>
                           {material.fileName && <span>File: {material.fileName}</span>}
                           {material.fileSize && <span>Size: {formatFileSize(material.fileSize)}</span>}
-                          <span>Downloads: {material.downloadCount}</span>
-                          <span>Views: {material.viewCount}</span>
+                          {material.type === 'video' && material.externalUrl && (
+                            <span>YouTube Video</span>
+                          )}
+                          {material.type === 'link' && material.externalUrl && (
+                            <span className="flex items-center">
+                              External Link <ExternalLink className="w-3 h-3 ml-1" />
+                            </span>
+                          )}
+                        </div>
+                        <div className="flex items-center space-x-4 mt-2 text-xs text-gray-500">
+                          <span>Downloads: {material.downloadCount || 0}</span>
+                          <span>Views: {material.viewCount || 0}</span>
                         </div>
                       </div>
                     </div>
@@ -309,7 +384,16 @@ const InstructorCourseManagement: React.FC = () => {
                       <Button
                         variant="outline"
                         size="sm"
+                        onClick={() => handleViewMaterial(material)}
+                        title="View/Download"
+                      >
+                        <Eye className="w-4 h-4" />
+                      </Button>
+                      <Button
+                        variant="outline"
+                        size="sm"
                         onClick={() => handleEditMaterial(material)}
+                        title="Edit"
                       >
                         <Edit3 className="w-4 h-4" />
                       </Button>
@@ -318,6 +402,7 @@ const InstructorCourseManagement: React.FC = () => {
                         size="sm"
                         onClick={() => handleDeleteMaterial(material._id)}
                         className="text-red-600 hover:text-red-700"
+                        title="Delete"
                       >
                         <Trash2 className="w-4 h-4" />
                       </Button>
@@ -331,8 +416,8 @@ const InstructorCourseManagement: React.FC = () => {
 
         {/* Upload Modal */}
         {showUploadModal && (
-          <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-            <div className="bg-white rounded-lg p-6 w-full max-w-md mx-4">
+          <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+            <div className="bg-white rounded-lg p-6 w-full max-w-md max-h-[90vh] overflow-y-auto">
               <h3 className="text-lg font-semibold mb-4">
                 {editingMaterial ? 'Edit Material' : 'Upload New Material'}
               </h3>
@@ -344,7 +429,7 @@ const InstructorCourseManagement: React.FC = () => {
                   </label>
                   <input
                     type="text"
-                    value={uploadForm.title || ''}
+                    value={uploadForm.title}
                     onChange={(e) => setUploadForm({ ...uploadForm, title: e.target.value })}
                     className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                     placeholder="Enter material title"
@@ -357,11 +442,11 @@ const InstructorCourseManagement: React.FC = () => {
                     Description
                   </label>
                   <textarea
-                    value={uploadForm.description || ''}
+                    value={uploadForm.description}
                     onChange={(e) => setUploadForm({ ...uploadForm, description: e.target.value })}
                     className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                     rows={3}
-                    placeholder="Enter material description"
+                    placeholder="Enter material description (optional)"
                   />
                 </div>
 
@@ -371,24 +456,49 @@ const InstructorCourseManagement: React.FC = () => {
                   </label>
                   <select
                     value={uploadForm.type}
-                    onChange={(e) => setUploadForm({ ...uploadForm, type: e.target.value as any })}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                    onChange={(e) => {
+                      const newType = e.target.value as any;
+                      setUploadForm({ 
+                        ...uploadForm, 
+                        type: newType,
+                        file: null,
+                        externalUrl: ''
+                      });
+                      if (fileInputRef.current) {
+                        fileInputRef.current.value = '';
+                      }
+                    }}
+                    className="w-full px-3 py-2 border border-gray-rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                   >
-                    <option value="document">Document</option>
+                    <option value="document">Document (PDF, Word, etc.)</option>
                     <option value="video">Video (YouTube Link)</option>
-                    <option value="image">Image</option>
+                    <option value="image">Image (JPG, PNG, etc.)</option>
                     <option value="link">External Link</option>
                   </select>
                 </div>
 
-                {uploadForm.type === 'link' || uploadForm.type === 'video' ? (
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                    Order (Optional)
+                  </label>
+                  <input
+                    type="number"
+                    min="0"
+                    value={uploadForm.order}
+                    onChange={(e) => setUploadForm({ ...uploadForm, order: parseInt(e.target.value) || 0 })}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                    placeholder="Display order (0 = default)"
+                  />
+                </div>
+
+                {(uploadForm.type === 'link' || uploadForm.type === 'video') ? (
                   <div>
                     <label className="block text-sm font-medium text-gray-700 mb-1">
-                      {uploadForm.type === 'video' ? 'YouTube URL *' : 'URL *'}
+                      {uploadForm.type === 'video' ? 'YouTube URL *' : 'External URL *'}
                     </label>
                     <input
                       type="url"
-                      value={uploadForm.externalUrl || ''}
+                      value={uploadForm.externalUrl}
                       onChange={(e) => setUploadForm({ ...uploadForm, externalUrl: e.target.value })}
                       className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                       placeholder={uploadForm.type === 'video' ? 'https://www.youtube.com/watch?v=...' : 'https://example.com'}
@@ -396,7 +506,7 @@ const InstructorCourseManagement: React.FC = () => {
                     />
                     {uploadForm.type === 'video' && (
                       <p className="text-xs text-gray-500 mt-1">
-                        Enter a YouTube video URL
+                        Enter a YouTube video URL (e.g., https://www.youtube.com/watch?v=dQw4w9WgXcQ)
                       </p>
                     )}
                   </div>
@@ -410,21 +520,35 @@ const InstructorCourseManagement: React.FC = () => {
                       ref={fileInputRef}
                       onChange={(e) => setUploadForm({ ...uploadForm, file: e.target.files?.[0] || null })}
                       className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                      accept={
-                        uploadForm.type === 'image' ? 'image/*' :
-                        '.pdf,.doc,.docx,.ppt,.pptx,.xls,.xlsx,.txt'
-                      }
+                      accept={getAcceptedFileTypes()}
                       required={!editingMaterial}
                     />
+                    <p className="text-xs text-gray-500 mt-1">
+                      {uploadForm.type === 'image' ? 
+                        'Accepted formats: JPG, PNG, GIF (max 10MB)' : 
+                        'Accepted formats: PDF, DOC, DOCX, PPT, PPTX, XLS, XLSX, TXT (max 10MB)'
+                      }
+                    </p>
                     {editingMaterial && (
-                      <p className="text-xs text-gray-500 mt-1">
-                        Leave empty to keep current file
+                      <p className="text-xs text-blue-600 mt-1">
+                        Leave empty to keep the current file
                       </p>
                     )}
                   </div>
                 )}
 
-                <div className="flex justify-end space-x-3 pt-4">
+                {uploading && (
+                  <div className="bg-blue-50 border border-blue-200 rounded-lg p-3">
+                    <div className="flex items-center">
+                      <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-blue-600 mr-2"></div>
+                      <span className="text-sm text-blue-800">
+                        {editingMaterial ? 'Updating material...' : 'Uploading material...'}
+                      </span>
+                    </div>
+                  </div>
+                )}
+
+                <div className="flex justify-end space-x-3 pt-4 border-t">
                   <Button
                     type="button"
                     variant="outline"
@@ -433,6 +557,7 @@ const InstructorCourseManagement: React.FC = () => {
                       setEditingMaterial(null);
                       resetUploadForm();
                     }}
+                    disabled={uploading}
                   >
                     Cancel
                   </Button>
@@ -440,7 +565,14 @@ const InstructorCourseManagement: React.FC = () => {
                     type="submit"
                     disabled={uploading}
                   >
-                    {uploading ? 'Uploading...' : editingMaterial ? 'Update' : 'Upload'}
+                    {uploading ? (
+                      <>
+                        <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>
+                        {editingMaterial ? 'Updating...' : 'Uploading...'}
+                      </>
+                    ) : (
+                      editingMaterial ? 'Update Material' : 'Upload Material'
+                    )}
                   </Button>
                 </div>
               </form>

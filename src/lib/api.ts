@@ -631,38 +631,56 @@ async deleteSkill(id: string) {
     return this.request('/admin/courses/instructors');
   }
 
-  // ========== COURSE MATERIALS MANAGEMENT ==========
-  async get(endpoint: string) {
-    return this.request(endpoint);
-  }
+  // Add these methods to the ApiClient class in src/lib/api.ts
 
-  async post(endpoint: string, data: any, options?: { headers?: Record<string, string> }) {
-    const isFormData = data instanceof FormData;
-    const headers = isFormData ? {} : { 'Content-Type': 'application/json' };
-    
-    return this.request(endpoint, {
-      method: 'POST',
-      headers: { ...headers, ...options?.headers },
-      body: isFormData ? data : JSON.stringify(data),
-    });
-  }
+// ========== COURSE MATERIALS METHODS ==========
+async getCourseMaterials(courseId: string) {
+  return this.request(`/materials/course/${courseId}`);
+}
 
-  async put(endpoint: string, data: any, options?: { headers?: Record<string, string> }) {
-    const isFormData = data instanceof FormData;
-    const headers = isFormData ? {} : { 'Content-Type': 'application/json' };
-    
-    return this.request(endpoint, {
-      method: 'PUT',
-      headers: { ...headers, ...options?.headers },
-      body: isFormData ? data : JSON.stringify(data),
-    });
-  }
+async uploadCourseMaterial(courseId: string, materialData: FormData) {
+  const headers = this.token ? { Authorization: `Bearer ${this.token}` } : {};
+  
+  return fetch(`${this.baseURL}/materials/upload/${courseId}`, {
+    method: 'POST',
+    headers,
+    body: materialData,
+  }).then(async response => {
+    if (!response.ok) {
+      const errorData = await response.json().catch(() => ({ message: 'Upload failed' }));
+      throw new Error(errorData.message || `HTTP error! status: ${response.status}`);
+    }
+    const data = await response.json();
+    return data.data || data;
+  });
+}
 
-  async delete(endpoint: string) {
-    return this.request(endpoint, {
-      method: 'DELETE',
-    });
-  }
+async updateCourseMaterial(materialId: string, materialData: FormData) {
+  const headers = this.token ? { Authorization: `Bearer ${this.token}` } : {};
+  
+  return fetch(`${this.baseURL}/materials/${materialId}`, {
+    method: 'PUT',
+    headers,
+    body: materialData,
+  }).then(async response => {
+    if (!response.ok) {
+      const errorData = await response.json().catch(() => ({ message: 'Update failed' }));
+      throw new Error(errorData.message || `HTTP error! status: ${response.status}`);
+    }
+    const data = await response.json();
+    return data.data || data;
+  });
+}
+
+async deleteCourseMaterial(materialId: string) {
+  return this.request(`/materials/${materialId}`, {
+    method: 'DELETE',
+  });
+}
+
+async downloadCourseMaterial(materialId: string) {
+  return this.request(`/materials/download/${materialId}`);
+}
 
   // ========== ADMIN BATCH MANAGEMENT ==========
   async getAdminBatches(params?: {

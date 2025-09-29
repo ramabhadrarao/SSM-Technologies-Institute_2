@@ -1,6 +1,7 @@
 const express = require('express');
 const router = express.Router();
 const { auth, authorize } = require('../middleware/auth');
+const { requireApprovedInstructor } = require('../middleware/instructorAuth');
 const { rateLimiters } = require('../middleware/security');
 const { uploadConfigs, handleUploadError, getFileUrl, deleteFile } = require('../middleware/upload');
 const CourseMaterial = require('../models/CourseMaterial');
@@ -12,7 +13,7 @@ const Student = require('../models/Student');
 router.get('/course/:courseId', auth, async (req, res) => {
   try {
     const { courseId } = req.params;
-    const userId = req.user.id;
+    const userId = req.user._id;
 
     // Check if user has access to course materials
     let hasAccess = false;
@@ -22,7 +23,7 @@ router.get('/course/:courseId', auth, async (req, res) => {
       const student = await Student.findOne({ user: userId });
       if (student) {
         const isEnrolled = student.enrolledCourses.some(
-          enrollment => enrollment.course.toString() === courseId
+          enrollment => enrollment.course.toString() === courseId && enrollment.status === 'active'
         );
         hasAccess = isEnrolled;
       }
@@ -49,7 +50,13 @@ router.get('/course/:courseId', auth, async (req, res) => {
       isActive: true
     })
     .populate('instructor', 'user designation')
-    .populate('instructor.user', 'firstName lastName')
+    .populate({
+      path: 'instructor',
+      populate: {
+        path: 'user',
+        select: 'firstName lastName'
+      }
+    })
     .sort({ order: 1, createdAt: -1 });
 
     // Add full file URLs
@@ -72,10 +79,11 @@ router.get('/course/:courseId', auth, async (req, res) => {
   }
 });
 
-// Upload material (instructor only)
+// Upload material (instructor only) - Fixed route
 router.post('/upload/:courseId', 
   auth, 
   authorize('instructor'),
+  requireApprovedInstructor,
   rateLimiters.upload,
   uploadConfigs.material.single('file'),
   handleUploadError,
@@ -83,7 +91,9 @@ router.post('/upload/:courseId',
     try {
       const { courseId } = req.params;
       const { title, description, type, externalUrl, order } = req.body;
-      const userId = req.user.id;
+      const userId = req.user._id;
+
+      console.log('Upload material request:', { courseId, title, type, userId });
 
       // Verify instructor owns this course
       const instructor = await Instructor.findOne({ user: userId });
@@ -95,7 +105,14 @@ router.post('/upload/:courseId',
       }
 
       const course = await Course.findById(courseId);
-      if (!course || course.instructor.toString() !== instructor._id.toString()) {
+      if (!course) {
+        return res.status(404).json({
+          success: false,
+          message: 'Course not found'
+        });
+      }
+
+      if (course.instructor.toString() !== instructor._id.toString()) {
         return res.status(403).json({
           success: false,
           message: 'Access denied. You can only upload materials to your assigned courses.'
@@ -106,11 +123,13 @@ router.post('/upload/:courseId',
         course: courseId,
         instructor: instructor._id,
         title,
-        description,
-        type,
-        order: order ? parseInt(order) : 0
+        description: description || '',
+        type: type || 'document',
+        order: order ? parseInt(order) : 0,
+        isActive: true
       };
 
+      // Handle different material types
       if (type === 'link' || type === 'video') {
         if (!externalUrl) {
           return res.status(400).json({
@@ -132,11 +151,19 @@ router.post('/upload/:courseId',
         materialData.mimeType = req.file.mimetype;
       }
 
+      console.log('Creating material:', materialData);
+
       const material = new CourseMaterial(materialData);
       await material.save();
 
       await material.populate('instructor', 'user designation');
-      await material.populate('instructor.user', 'firstName lastName');
+      await material.populate({
+        path: 'instructor',
+        populate: {
+          path: 'user',
+          select: 'firstName lastName'
+        }
+      });
 
       res.status(201).json({
         success: true,
@@ -151,7 +178,8 @@ router.post('/upload/:courseId',
       console.error('Upload material error:', error);
       res.status(500).json({
         success: false,
-        message: 'Failed to upload material'
+        message: 'Failed to upload material',
+        error: process.env.NODE_ENV === 'development' ? error.message : undefined
       });
     }
   }
@@ -161,11 +189,14 @@ router.post('/upload/:courseId',
 router.put('/:materialId',
   auth,
   authorize('instructor'),
+  requireApprovedInstructor,
+  uploadConfigs.material.single('file'),
+  handleUploadError,
   async (req, res) => {
     try {
       const { materialId } = req.params;
-      const { title, description, order, isActive } = req.body;
-      const userId = req.user.id;
+      const { title, description, order, isActive, type, externalUrl } = req.body;
+      const userId = req.user._id;
 
       const instructor = await Instructor.findOne({ user: userId });
       if (!instructor) {
@@ -195,10 +226,42 @@ router.put('/:materialId',
       if (description !== undefined) material.description = description;
       if (order !== undefined) material.order = parseInt(order);
       if (isActive !== undefined) material.isActive = isActive;
+      if (type !== undefined) material.type = type;
+
+      // Handle file/URL updates
+      if (type === 'link' || type === 'video') {
+        if (externalUrl !== undefined) material.externalUrl = externalUrl;
+        // Clear file data if switching to link/video
+        if (material.fileUrl) {
+          deleteFile(material.fileUrl);
+          material.fileUrl = undefined;
+          material.fileName = undefined;
+          material.fileSize = undefined;
+          material.mimeType = undefined;
+        }
+      } else if (req.file) {
+        // Delete old file if exists
+        if (material.fileUrl) {
+          deleteFile(material.fileUrl);
+        }
+        material.fileUrl = req.file.path;
+        material.fileName = req.file.originalname;
+        material.fileSize = req.file.size;
+        material.mimeType = req.file.mimetype;
+        // Clear external URL if switching to file
+        material.externalUrl = undefined;
+      }
 
       await material.save();
+      
       await material.populate('instructor', 'user designation');
-      await material.populate('instructor.user', 'firstName lastName');
+      await material.populate({
+        path: 'instructor',
+        populate: {
+          path: 'user',
+          select: 'firstName lastName'
+        }
+      });
 
       res.json({
         success: true,
@@ -223,10 +286,11 @@ router.put('/:materialId',
 router.delete('/:materialId',
   auth,
   authorize('instructor'),
+  requireApprovedInstructor,
   async (req, res) => {
     try {
       const { materialId } = req.params;
-      const userId = req.user.id;
+      const userId = req.user._id;
 
       const instructor = await Instructor.findOne({ user: userId });
       if (!instructor) {
@@ -273,13 +337,13 @@ router.delete('/:materialId',
   }
 );
 
-// Download material (for enrolled students and course instructor)
+// Download/View material (for enrolled students and course instructor)
 router.get('/download/:materialId',
   auth,
   async (req, res) => {
     try {
       const { materialId } = req.params;
-      const userId = req.user.id;
+      const userId = req.user._id;
 
       const material = await CourseMaterial.findById(materialId).populate('course');
       if (!material || !material.isActive) {
@@ -296,7 +360,7 @@ router.get('/download/:materialId',
         const student = await Student.findOne({ user: userId });
         if (student) {
           const isEnrolled = student.enrolledCourses.some(
-            enrollment => enrollment.course.toString() === material.course._id.toString()
+            enrollment => enrollment.course.toString() === material.course._id.toString() && enrollment.status === 'active'
           );
           hasAccess = isEnrolled;
         }
@@ -314,14 +378,18 @@ router.get('/download/:materialId',
         });
       }
 
-      // Increment download count
-      await material.incrementDownload();
+      // Increment download/view count
+      if (material.type === 'link' || material.type === 'video') {
+        await material.incrementView();
+      } else {
+        await material.incrementDownload();
+      }
 
-      if (material.type === 'link') {
+      if (material.type === 'link' || material.type === 'video') {
         return res.json({
           success: true,
           data: {
-            type: 'link',
+            type: material.type,
             url: material.externalUrl
           }
         });
