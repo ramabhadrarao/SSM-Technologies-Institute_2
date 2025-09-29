@@ -1,6 +1,6 @@
 // src/pages/CourseDetail.tsx
 import React, { useState, useEffect } from 'react';
-import { useParams, Link } from 'react-router-dom';
+import { useParams, Link, useNavigate } from 'react-router-dom';
 import { 
   BookOpen, 
   Clock, 
@@ -18,11 +18,16 @@ import { Course } from '../types';
 import Card from '../components/UI/Card';
 import LoadingSpinner from '../components/UI/LoadingSpinner';
 import Button from '../components/UI/Button';
+import { useAuth } from '../contexts/AuthContext';
+import { toast } from 'react-hot-toast';
 
 const CourseDetail: React.FC = () => {
   const { id } = useParams<{ id: string }>();
+  const navigate = useNavigate();
+  const { user } = useAuth();
   const [course, setCourse] = useState<Course | null>(null);
   const [loading, setLoading] = useState(true);
+  const [enrolling, setEnrolling] = useState(false);
   const [selectedTab, setSelectedTab] = useState('overview');
 
   useEffect(() => {
@@ -40,6 +45,35 @@ const CourseDetail: React.FC = () => {
       console.error('Error fetching course:', error);
     } finally {
       setLoading(false);
+    }
+  };
+
+  const handleEnrollment = async () => {
+    if (!user) {
+      // Redirect to login if not authenticated
+      navigate('/auth/login', { 
+        state: { from: `/courses/${id}` } 
+      });
+      return;
+    }
+
+    if (user.role !== 'student') {
+      toast.error('Only students can enroll in courses');
+      return;
+    }
+
+    try {
+      setEnrolling(true);
+      await apiClient.enrollInCourse(id!);
+      toast.success('Successfully enrolled in course!');
+      
+      // Refresh course data to update enrollment count
+      fetchCourse();
+    } catch (error: any) {
+      console.error('Enrollment error:', error);
+      toast.error(error.message || 'Failed to enroll in course');
+    } finally {
+      setEnrolling(false);
     }
   };
 
@@ -141,10 +175,26 @@ const CourseDetail: React.FC = () => {
 
               {/* CTA Buttons */}
               <div className="flex flex-col sm:flex-row gap-4">
-                <Button size="lg" className="flex-1 sm:flex-none">
-                  <Award className="w-5 h-5 mr-2" />
-                  Enroll Now
-                </Button>
+                {user && user.role === 'student' ? (
+                  <Button 
+                    size="lg" 
+                    className="flex-1 sm:flex-none"
+                    onClick={handleEnrollment}
+                    disabled={enrolling}
+                  >
+                    <Award className="w-5 h-5 mr-2" />
+                    {enrolling ? 'Enrolling...' : 'Enroll Now'}
+                  </Button>
+                ) : (
+                  <Button 
+                    size="lg" 
+                    className="flex-1 sm:flex-none"
+                    onClick={handleEnrollment}
+                  >
+                    <Award className="w-5 h-5 mr-2" />
+                    {user ? 'Login as Student to Enroll' : 'Login to Enroll'}
+                  </Button>
+                )}
                 <Button variant="outline" size="lg">
                   <PlayCircle className="w-5 h-5 mr-2" />
                   Preview Course
@@ -316,10 +366,26 @@ const CourseDetail: React.FC = () => {
               </div>
               
               <div className="mt-6 pt-6 border-t">
-                <Button className="w-full" size="lg">
-                  <Award className="w-5 h-5 mr-2" />
-                  Enroll Now
-                </Button>
+                {user && user.role === 'student' ? (
+                  <Button 
+                    size="lg" 
+                    className="w-full"
+                    onClick={handleEnrollment}
+                    disabled={enrolling}
+                  >
+                    <Award className="w-5 h-5 mr-2" />
+                    {enrolling ? 'Enrolling...' : 'Enroll Now'}
+                  </Button>
+                ) : (
+                  <Button 
+                    size="lg" 
+                    className="w-full"
+                    onClick={handleEnrollment}
+                  >
+                    <Award className="w-5 h-5 mr-2" />
+                    {user ? 'Login as Student to Enroll' : 'Login to Enroll'}
+                  </Button>
+                )}
                 <p className="text-xs text-gray-500 mt-2 text-center">
                   30-day money-back guarantee
                 </p>
