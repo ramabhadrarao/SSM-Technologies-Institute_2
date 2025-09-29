@@ -40,7 +40,7 @@ const getAllTeamMembers = async (req, res) => {
     // Add full URLs for images
     const teamMembersWithUrls = teamMembers.map(member => ({
       ...member.toObject(),
-      imageUrl: getFileUrl(member.imageUrl)
+      imageUrl: member.imageUrl ? getFileUrl(member.imageUrl) : null
     }));
 
     // Get stats
@@ -73,7 +73,8 @@ const getAllTeamMembers = async (req, res) => {
           currentPage: parseInt(page),
           totalPages: Math.ceil(total / parseInt(limit)),
           totalItems: total,
-          itemsPerPage: parseInt(limit)
+          itemsPerPage: parseInt(limit),
+          pages: Math.ceil(total / parseInt(limit))
         },
         stats: stats[0] || { total: 0, active: 0, inactive: 0 },
         departmentStats
@@ -105,7 +106,7 @@ const getTeamMember = async (req, res) => {
       success: true,
       data: {
         ...teamMember.toObject(),
-        imageUrl: getFileUrl(teamMember.imageUrl)
+        imageUrl: teamMember.imageUrl ? getFileUrl(teamMember.imageUrl) : null
       }
     });
   } catch (error) {
@@ -137,7 +138,7 @@ const createTeamMember = async (req, res) => {
     // Handle image upload
     let imageUrl = null;
     if (req.file) {
-      imageUrl = `/uploads/team/${req.file.filename}`;
+      imageUrl = `uploads/team/${req.file.filename}`;
     }
 
     const teamMember = new Team({
@@ -159,7 +160,10 @@ const createTeamMember = async (req, res) => {
     res.status(201).json({
       success: true,
       message: 'Team member created successfully',
-      data: teamMember
+      data: {
+        ...teamMember.toObject(),
+        imageUrl: imageUrl ? getFileUrl(imageUrl) : null
+      }
     });
   } catch (error) {
     console.error('Error creating team member:', error);
@@ -198,7 +202,6 @@ const updateTeamMember = async (req, res) => {
 
     // Handle image upload
     if (req.file) {
-      // Delete old image if exists
       if (teamMember.imageUrl) {
         const oldImagePath = path.join(__dirname, '..', teamMember.imageUrl);
         try {
@@ -207,7 +210,7 @@ const updateTeamMember = async (req, res) => {
           console.log('Old image not found or already deleted');
         }
       }
-      teamMember.imageUrl = `/uploads/team/${req.file.filename}`;
+      teamMember.imageUrl = `uploads/team/${req.file.filename}`;
     }
 
     // Update fields
@@ -230,7 +233,10 @@ const updateTeamMember = async (req, res) => {
     res.json({
       success: true,
       message: 'Team member updated successfully',
-      data: teamMember
+      data: {
+        ...teamMember.toObject(),
+        imageUrl: teamMember.imageUrl ? getFileUrl(teamMember.imageUrl) : null
+      }
     });
   } catch (error) {
     console.error('Error updating team member:', error);
@@ -254,7 +260,6 @@ const deleteTeamMember = async (req, res) => {
       });
     }
 
-    // Delete image file if exists
     if (teamMember.imageUrl) {
       const imagePath = path.join(__dirname, '..', teamMember.imageUrl);
       try {
@@ -292,10 +297,8 @@ const bulkDeleteTeamMembers = async (req, res) => {
       });
     }
 
-    // Get team members to delete their images
     const teamMembers = await Team.find({ _id: { $in: ids } });
     
-    // Delete image files
     for (const member of teamMembers) {
       if (member.imageUrl) {
         const imagePath = path.join(__dirname, '..', member.imageUrl);
@@ -330,10 +333,9 @@ const getPublicTeamMembers = async (req, res) => {
       .sort({ order: 1, createdAt: -1 })
       .select('-createdAt -updatedAt');
 
-    // Add full URLs for images
     const teamMembersWithUrls = teamMembers.map(member => ({
       ...member.toObject(),
-      imageUrl: getFileUrl(member.imageUrl)
+      imageUrl: member.imageUrl ? getFileUrl(member.imageUrl) : null
     }));
 
     res.json({

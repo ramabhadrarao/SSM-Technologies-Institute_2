@@ -97,14 +97,6 @@ const TeamManagement: React.FC = () => {
   const fetchTeamMembers = async () => {
     try {
       setLoading(true);
-      const params = new URLSearchParams({
-        page: currentPage.toString(),
-        limit: '10',
-        ...(searchTerm && { search: searchTerm }),
-        ...(statusFilter !== 'all' && { status: statusFilter }),
-        ...(departmentFilter !== 'all' && { department: departmentFilter })
-      });
-
       const response = await apiClient.getTeamMembers({
         page: currentPage,
         limit: 10,
@@ -112,8 +104,11 @@ const TeamManagement: React.FC = () => {
         ...(statusFilter !== 'all' && { status: statusFilter }),
         ...(departmentFilter !== 'all' && { department: departmentFilter })
       });
+      
+      console.log('Team members response:', response);
+      
       setTeamMembers(response.teamMembers || []);
-      setTotalPages(response.pagination?.pages || 1);
+      setTotalPages(response.pagination?.totalPages || response.pagination?.pages || 1);
       setTeamStats(response.stats);
     } catch (error: any) {
       console.error('Error fetching team members:', error);

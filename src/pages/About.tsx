@@ -1,7 +1,22 @@
 // src/pages/About.tsx
 import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
-import { Award, Users, BookOpen, TrendingUp, Linkedin, Twitter, ExternalLink, Target, Eye, Heart } from 'lucide-react';
+import { 
+  Award, 
+  Users, 
+  BookOpen, 
+  TrendingUp, 
+  Linkedin, 
+  Twitter, 
+  Mail,
+  ExternalLink, 
+  Target, 
+  Eye, 
+  Heart,
+  Quote,
+  Briefcase,
+  GraduationCap
+} from 'lucide-react';
 import { apiClient } from '../lib/api';
 import Card from '../components/UI/Card';
 import LoadingSpinner from '../components/UI/LoadingSpinner';
@@ -28,6 +43,7 @@ interface TeamMember {
 const About: React.FC = () => {
   const [teamMembers, setTeamMembers] = useState<TeamMember[]>([]);
   const [loading, setLoading] = useState(true);
+  const [selectedMember, setSelectedMember] = useState<TeamMember | null>(null);
 
   useEffect(() => {
     fetchTeamData();
@@ -40,7 +56,6 @@ const About: React.FC = () => {
       setTeamMembers(response || []);
     } catch (error) {
       console.error('Error fetching team data:', error);
-      // Fallback to empty array if API fails
       setTeamMembers([]);
     } finally {
       setLoading(false);
@@ -103,17 +118,27 @@ const About: React.FC = () => {
       <div className="py-16 bg-white">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-12">
-            <div>
-              <h2 className="text-3xl font-bold text-gray-900 mb-6">Our Mission</h2>
-              <p className="text-lg text-gray-600">
-                "Empowering individuals and organizations through cutting-edge IT education, SSM Technologies is committed to delivering industry-relevant training that fosters innovation, enhances career growth, and builds a skilled digital workforce. We strive to bridge the gap between academic learning and practical expertise by offering hands-on, personalized, and globally competitive technology programs."
-              </p>
+            <div className="relative">
+              <div className="absolute top-0 left-0 w-16 h-16 text-blue-100">
+                <Quote className="w-full h-full" />
+              </div>
+              <div className="pl-20">
+                <h2 className="text-3xl font-bold text-gray-900 mb-6">Our Mission</h2>
+                <p className="text-lg text-gray-600 leading-relaxed">
+                  Empowering individuals and organizations through cutting-edge IT education, SSM Technologies is committed to delivering industry-relevant training that fosters innovation, enhances career growth, and builds a skilled digital workforce. We strive to bridge the gap between academic learning and practical expertise by offering hands-on, personalized, and globally competitive technology programs.
+                </p>
+              </div>
             </div>
-            <div>
-              <h2 className="text-3xl font-bold text-gray-900 mb-6">Our Vision</h2>
-              <p className="text-lg text-gray-600">
-                "To become a transformative force in global IT education by nurturing talent, fostering innovation, and delivering future-ready skills that empower individuals and organizations to thrive in the digital age. SSM Technologies envisions a world where technology is accessible, inclusive, and a catalyst for positive change—driven by a community of learners, educators, and industry leaders committed to excellence, integrity, and lifelong learning."
-              </p>
+            <div className="relative">
+              <div className="absolute top-0 left-0 w-16 h-16 text-cyan-100">
+                <Quote className="w-full h-full" />
+              </div>
+              <div className="pl-20">
+                <h2 className="text-3xl font-bold text-gray-900 mb-6">Our Vision</h2>
+                <p className="text-lg text-gray-600 leading-relaxed">
+                  To become a transformative force in global IT education by nurturing talent, fostering innovation, and delivering future-ready skills that empower individuals and organizations to thrive in the digital age. SSM Technologies envisions a world where technology is accessible, inclusive, and a catalyst for positive change.
+                </p>
+              </div>
             </div>
           </div>
         </div>
@@ -158,7 +183,7 @@ const About: React.FC = () => {
 
           <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
             {values.map((value, index) => (
-              <Card key={index} className="text-center p-8 h-full">
+              <Card key={index} className="text-center p-8 h-full hover:shadow-2xl transition-shadow">
                 <div className="inline-flex items-center justify-center w-20 h-20 bg-blue-50 rounded-full mb-6">
                   {value.icon}
                 </div>
@@ -182,78 +207,105 @@ const About: React.FC = () => {
             </p>
           </div>
 
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-2 gap-8">
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
             {teamMembers.map((member) => (
-              <Card key={member._id} className="overflow-hidden">
-                <div className="md:flex">
-                  <div className="md:flex-shrink-0">
-                    <div className="h-48 w-full md:w-48 bg-gradient-to-br from-blue-500 to-cyan-500">
-                      {member.imageUrl ? (
-                        <img
-                          src={member.imageUrl}
-                          alt={member.name}
-                          className="h-full w-full object-cover"
-                        />
-                      ) : (
-                        <div className="h-full flex items-center justify-center">
-                          <Users className="w-16 h-16 text-white" />
-                        </div>
-                      )}
+              <Card 
+                key={member._id} 
+                className="group overflow-hidden hover:shadow-2xl transition-all duration-300 transform hover:-translate-y-2"
+              >
+                {/* Image Section with Overlay */}
+                <div className="relative h-80 overflow-hidden bg-gradient-to-br from-blue-500 to-cyan-500">
+                  {member.imageUrl ? (
+                    <img
+                      src={member.imageUrl}
+                      alt={member.name}
+                      className="w-full h-full object-cover object-center transition-transform duration-500 group-hover:scale-110"
+                    />
+                  ) : (
+                    <div className="h-full flex items-center justify-center">
+                      <Users className="w-24 h-24 text-white" />
                     </div>
+                  )}
+                  
+                  {/* Gradient Overlay */}
+                  <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-black/20 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
+                  
+                  {/* Department Badge */}
+                  {member.department && (
+                    <div className="absolute top-4 right-4 bg-white/90 backdrop-blur-sm px-3 py-1 rounded-full">
+                      <span className="text-xs font-semibold text-blue-600">{member.department}</span>
+                    </div>
+                  )}
+                  
+                  {/* Social Links - Appear on Hover */}
+                  <div className="absolute bottom-4 left-0 right-0 flex justify-center space-x-3 opacity-0 group-hover:opacity-100 transition-all duration-300 transform translate-y-4 group-hover:translate-y-0">
+                    {member.socialLinks?.linkedin && (
+                      <a
+                        href={member.socialLinks.linkedin}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="bg-white/90 backdrop-blur-sm p-2 rounded-full hover:bg-blue-600 hover:text-white transition-colors"
+                        onClick={(e) => e.stopPropagation()}
+                      >
+                        <Linkedin className="w-5 h-5" />
+                      </a>
+                    )}
+                    {member.socialLinks?.twitter && (
+                      <a
+                        href={member.socialLinks.twitter}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="bg-white/90 backdrop-blur-sm p-2 rounded-full hover:bg-blue-400 hover:text-white transition-colors"
+                        onClick={(e) => e.stopPropagation()}
+                      >
+                        <Twitter className="w-5 h-5" />
+                      </a>
+                    )}
+                    {member.email && (
+                      <a
+                        href={`mailto:${member.email}`}
+                        className="bg-white/90 backdrop-blur-sm p-2 rounded-full hover:bg-gray-800 hover:text-white transition-colors"
+                        onClick={(e) => e.stopPropagation()}
+                      >
+                        <Mail className="w-5 h-5" />
+                      </a>
+                    )}
                   </div>
-                  <div className="p-6 flex-1">
-                    <h3 className="text-xl font-bold text-gray-900 mb-2">
+                </div>
+
+                {/* Content Section */}
+                <div className="p-6">
+                  {/* Name and Designation */}
+                  <div className="mb-4">
+                    <h3 className="text-xl font-bold text-gray-900 mb-2 group-hover:text-blue-600 transition-colors">
                       {member.name}
                     </h3>
-                    <p className="text-blue-600 font-medium mb-2">
+                    <p className="text-blue-600 font-semibold text-sm mb-1">
                       {member.designation}
                     </p>
-                    {member.department && (
-                      <p className="text-sm text-gray-500 mb-2">
-                        {member.department}
-                      </p>
-                    )}
-                    {member.experience && (
-                      <p className="text-sm text-gray-500 mb-4">
-                        {member.experience}
-                      </p>
-                    )}
-                    <p className="text-gray-600 text-sm mb-4 line-clamp-4">
-                      {member.bio}
-                    </p>
-                    
-                    {/* Social Links */}
-                    <div className="flex space-x-3">
-                      {member.socialLinks?.linkedin && (
-                        <a
-                          href={member.socialLinks.linkedin}
-                          target="_blank"
-                          rel="noopener noreferrer"
-                          className="text-blue-600 hover:text-blue-800 transition-colors"
-                        >
-                          <Linkedin className="w-5 h-5" />
-                        </a>
-                      )}
-                      {member.socialLinks?.twitter && (
-                        <a
-                          href={member.socialLinks.twitter}
-                          target="_blank"
-                          rel="noopener noreferrer"
-                          className="text-blue-400 hover:text-blue-600 transition-colors"
-                        >
-                          <Twitter className="w-5 h-5" />
-                        </a>
-                      )}
-                      {member.socialLinks?.email && (
-                        <a
-                          href={`mailto:${member.socialLinks.email}`}
-                          className="text-gray-600 hover:text-gray-800 transition-colors"
-                        >
-                          <ExternalLink className="w-5 h-5" />
-                        </a>
-                      )}
-                    </div>
                   </div>
+
+                  {/* Experience Badge */}
+                  {member.experience && (
+                    <div className="flex items-center text-sm text-gray-600 mb-4 bg-gray-50 rounded-lg px-3 py-2">
+                      <Briefcase className="w-4 h-4 mr-2 text-blue-500" />
+                      <span className="font-medium">{member.experience}</span>
+                    </div>
+                  )}
+
+                  {/* Bio */}
+                  <p className="text-gray-600 text-sm leading-relaxed line-clamp-4 mb-4">
+                    {member.bio}
+                  </p>
+
+                  {/* Read More Button */}
+                  <button
+                    onClick={() => setSelectedMember(member)}
+                    className="text-blue-600 hover:text-blue-800 text-sm font-semibold flex items-center transition-colors"
+                  >
+                    Read More
+                    <ExternalLink className="w-4 h-4 ml-1" />
+                  </button>
                 </div>
               </Card>
             ))}
@@ -271,7 +323,7 @@ const About: React.FC = () => {
           </div>
           
           <div className="prose prose-lg mx-auto text-gray-600">
-            <p>
+            <p className="text-lg leading-relaxed mb-6">
               Founded in 2018, SSM Technologies began with a simple yet powerful vision: to bridge 
               the gap between traditional education and industry requirements. Our founders, having 
               experienced firsthand the challenges faced by fresh graduates entering the tech industry, 
@@ -279,19 +331,19 @@ const About: React.FC = () => {
               real-world challenges.
             </p>
             
-            <p>
+            <p className="text-lg leading-relaxed mb-6">
               What started as a small coaching center with 10 students has grown into one of India's 
               most trusted technology education providers. We have successfully trained over 5,000 
               students, with 95% of them securing placements in top companies across various industries.
             </p>
             
-            <p>
+            <p className="text-lg leading-relaxed mb-6">
               Our success lies in our commitment to practical, hands-on learning combined with strong 
               theoretical foundations. We continuously update our curriculum to match industry trends 
               and work closely with hiring partners to understand their requirements.
             </p>
             
-            <p>
+            <p className="text-lg leading-relaxed">
               Today, SSM Technologies stands as a testament to the power of quality education, 
               dedicated mentorship, and unwavering commitment to student success. Our alumni work 
               in leading technology companies worldwide, and many have started their own successful 
@@ -301,7 +353,7 @@ const About: React.FC = () => {
         </div>
       </div>
 
-     {/* CTA Section */}
+      {/* CTA Section */}
       <div className="bg-gradient-to-r from-blue-600 to-cyan-600 py-16">
         <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 text-center">
           <h2 className="text-3xl md:text-4xl font-bold text-white mb-6">
@@ -328,6 +380,117 @@ const About: React.FC = () => {
           </div>
         </div>
       </div>
+
+      {/* Team Member Modal */}
+      {selectedMember && (
+        <div 
+          className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center p-4 z-50"
+          onClick={() => setSelectedMember(null)}
+        >
+          <div 
+            className="bg-white rounded-2xl max-w-3xl w-full max-h-[90vh] overflow-y-auto"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="relative">
+              {/* Header with Image */}
+              <div className="relative h-64 bg-gradient-to-br from-blue-500 to-cyan-500">
+                {selectedMember.imageUrl ? (
+                  <img
+                    src={selectedMember.imageUrl}
+                    alt={selectedMember.name}
+                    className="w-full h-full object-cover"
+                  />
+                ) : (
+                  <div className="h-full flex items-center justify-center">
+                    <Users className="w-24 h-24 text-white" />
+                  </div>
+                )}
+                <div className="absolute inset-0 bg-gradient-to-t from-black/60 to-transparent" />
+                
+                {/* Close Button */}
+                <button
+                  onClick={() => setSelectedMember(null)}
+                  className="absolute top-4 right-4 bg-white/90 backdrop-blur-sm p-2 rounded-full hover:bg-white transition-colors"
+                >
+                  <ExternalLink className="w-5 h-5 text-gray-800 transform rotate-45" />
+                </button>
+              </div>
+
+              {/* Content */}
+              <div className="p-8">
+                {/* Name and Title */}
+                <div className="mb-6">
+                  <h3 className="text-3xl font-bold text-gray-900 mb-2">
+                    {selectedMember.name}
+                  </h3>
+                  <p className="text-xl text-blue-600 font-semibold mb-2">
+                    {selectedMember.designation}
+                  </p>
+                  {selectedMember.department && (
+                    <span className="inline-block bg-blue-100 text-blue-800 px-3 py-1 rounded-full text-sm font-medium">
+                      {selectedMember.department}
+                    </span>
+                  )}
+                </div>
+
+                {/* Experience */}
+                {selectedMember.experience && (
+                  <div className="flex items-center text-gray-700 mb-6 bg-gray-50 rounded-lg px-4 py-3">
+                    <GraduationCap className="w-5 h-5 mr-3 text-blue-500" />
+                    <span className="font-medium">{selectedMember.experience}</span>
+                  </div>
+                )}
+
+                {/* Bio */}
+                <div className="mb-6">
+                  <h4 className="text-lg font-semibold text-gray-900 mb-3">About</h4>
+                  <p className="text-gray-600 leading-relaxed">
+                    {selectedMember.bio}
+                  </p>
+                </div>
+
+                {/* Contact Info */}
+                {selectedMember.email && (
+                  <div className="mb-6">
+                    <h4 className="text-lg font-semibold text-gray-900 mb-3">Contact</h4>
+                    <a 
+                      href={`mailto:${selectedMember.email}`}
+                      className="flex items-center text-blue-600 hover:text-blue-800 transition-colors"
+                    >
+                      <Mail className="w-5 h-5 mr-2" />
+                      {selectedMember.email}
+                    </a>
+                  </div>
+                )}
+
+                {/* Social Links */}
+                <div className="flex space-x-4 pt-6 border-t">
+                  {selectedMember.socialLinks?.linkedin && (
+                    <a
+                      href={selectedMember.socialLinks.linkedin}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="flex items-center justify-center w-12 h-12 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
+                    >
+                      <Linkedin className="w-6 h-6" />
+                    </a>
+                  )}
+                  {selectedMember.socialLinks?.twitter && (
+                    <a
+                      href={selectedMember.socialLinks.twitter}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="flex items-center justify-center w-12 h-12 bg-blue-400 text-white rounded-lg hover:bg-blue-500 transition-colors"
+                    >
+                      <Twitter className="w-6 h-6" />
+                    </a>
+                  )}
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };

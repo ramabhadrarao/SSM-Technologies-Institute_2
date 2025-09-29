@@ -155,6 +155,7 @@ const enhancedContactRateLimit = async (req, res, next) => {
 };
 
 // CAPTCHA validation (server-side verification)
+// CAPTCHA validation (server-side verification)
 const validateCaptcha = async (req, res, next) => {
   const { captchaToken } = req.body;
   
@@ -170,6 +171,11 @@ const validateCaptcha = async (req, res, next) => {
     const secretKey = process.env.RECAPTCHA_SECRET_KEY;
     if (!secretKey) {
       console.error('❌ reCAPTCHA secret key not configured');
+      // In development, you might want to skip CAPTCHA
+      if (process.env.NODE_ENV === 'development') {
+        console.warn('⚠️ CAPTCHA verification skipped in development mode');
+        return next();
+      }
       return res.status(500).json({
         success: false,
         message: 'CAPTCHA verification service unavailable'
@@ -187,8 +193,11 @@ const validateCaptcha = async (req, res, next) => {
     
     const verificationResult = await response.json();
     
+    console.log('CAPTCHA verification result:', verificationResult); // Debug log
+    
     if (!verificationResult.success) {
       console.log(`🚨 CAPTCHA verification failed from IP: ${req.ip}`);
+      console.log('Error codes:', verificationResult['error-codes']);
       
       // Log suspicious activity
       contactRateLimiters.suspicious.consume(req.ip).catch(() => {});
@@ -199,7 +208,7 @@ const validateCaptcha = async (req, res, next) => {
       });
     }
     
-    // Check CAPTCHA score (v3 only)
+    // Check CAPTCHA score (v3 only, v2 doesn't have score)
     if (verificationResult.score && verificationResult.score < 0.5) {
       console.log(`🚨 Low CAPTCHA score from IP: ${req.ip}, Score: ${verificationResult.score}`);
       
@@ -209,6 +218,7 @@ const validateCaptcha = async (req, res, next) => {
       });
     }
     
+    console.log('✅ CAPTCHA verified successfully');
     next();
   } catch (error) {
     console.error('CAPTCHA verification error:', error);
@@ -218,7 +228,118 @@ const validateCaptcha = async (req, res, next) => {
     });
   }
 };
+// Alternative CAPTCHA validation (for when reCAPTCHA is not available)
+const validateAlternativeCaptcha = (req, res, next) => {
+  const { captchaToken } = req.body;
+  
+  if (!captchaToken) {
+    return res.status(400).json({
+      success: false,
+      message: 'CAPTCHA verification is required'
+    });
+  }
 
+  // Check if it's an alternative CAPTCHA
+  if (captchaToken.startsWith('alternative-captcha-')) {
+    console.log('✅ Alternative CAPTCHA used:', captchaToken);
+    // Alternative CAPTCHAs are already verified on frontend
+    // Additional server-side checks can be added here if needed
+    return next();
+  }
+
+  // If it's a Google reCAPTCHA token, continue with normal validation
+  next();
+};
+
+// Enhanced CAPTCHA validation with fallback support
+const validateCaptcha = async (req, res, next) => {
+  const { captchaToken } = req.body;
+  
+  if (!captchaToken) {
+    return res.status(400).json({
+      success: false,
+      message: 'CAPTCHA verification is required'
+    });
+  }
+
+  try {
+    // Check if it's an alternative CAPTCHA (frontend-verified)
+    if (captchaToken.startsWith('alternative-captcha-')) {
+      const captchaType = captchaToken.split('-')[2]; // math, slider, puzzle, text, time
+      console.log(`✅ Alternative CAPTCHA verified (${captchaType})`);
+      
+      // Log for monitoring
+      console.log({
+        type: 'alternative-captcha',
+        method: captchaType,
+        ip: req.ip,
+        timestamp: new Date().toISOString()
+      });
+      
+      return next();
+    }
+
+    // Google reCAPTCHA verification
+    const secretKey = process.env.RECAPTCHA_SECRET_KEY;
+    
+    if (!secretKey) {
+      console.error('❌ reCAPTCHA secret key not configured');
+      
+      // In development, allow alternative CAPTCHAs
+      if (process.env.NODE_ENV === 'development') {
+        console.warn('⚠️ CAPTCHA verification skipped in development mode');
+        return next();
+      }
+      
+      return res.status(500).json({
+        success: false,
+        message: 'CAPTCHA verification service unavailable'
+      });
+    }
+    
+    const verificationURL = `https://www.google.com/recaptcha/api/siteverify`;
+    const response = await fetch(verificationURL, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/x-www-form-urlencoded',
+      },
+      body: `secret=${secretKey}&response=${captchaToken}&remoteip=${req.ip}`
+    });
+    
+    const verificationResult = await response.json();
+    
+    console.log('CAPTCHA verification result:', verificationResult);
+    
+    if (!verificationResult.success) {
+      console.log(`🚨 CAPTCHA verification failed from IP: ${req.ip}`);
+      console.log('Error codes:', verificationResult['error-codes']);
+      
+      // Log suspicious activity
+      contactRateLimiters.suspicious.consume(req.ip).catch(() => {});
+      
+      return res.status(400).json({
+        success: false,
+        message: 'CAPTCHA verification failed. Please try again.'
+      });
+    }
+    
+    console.log('✅ Google reCAPTCHA verified successfully');
+    next();
+  } catch (error) {
+    console.error('CAPTCHA verification error:', error);
+    
+    // In development, allow through on error
+    if (process.env.NODE_ENV === 'development') {
+      console.warn('⚠️ CAPTCHA verification error in development, allowing through');
+      return next();
+    }
+    
+    return res.status(500).json({
+      success: false,
+      message: 'CAPTCHA verification service error'
+    });
+  }
+};
 // IP geolocation and blocking
 const checkIPReputation = async (req, res, next) => {
   const ip = req.ip;
@@ -327,6 +448,7 @@ module.exports = {
   validateContent,
   enhancedContactRateLimit,
   validateCaptcha,
+  validateAlternativeCaptcha,
   checkIPReputation,
   generateRequestFingerprint,
   validateSubmissionTiming,

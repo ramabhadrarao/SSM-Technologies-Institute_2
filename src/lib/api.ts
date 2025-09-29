@@ -1005,24 +1005,36 @@ class ApiClient {
   }
 
   async createTeamMember(teamData: FormData) {
-    return this.request('/admin/team', {
+    const headers = this.token ? { Authorization: `Bearer ${this.token}` } : {};
+    
+    return fetch(`${this.baseURL}/admin/team`, {
       method: 'POST',
-      headers: {
-        ...(this.token && { Authorization: `Bearer ${this.token}` }),
-        // Don't set Content-Type for FormData, let browser set it with boundary
-      },
+      headers,
       body: teamData,
+    }).then(async response => {
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({ message: 'Network error' }));
+        throw new Error(errorData.message || `HTTP error! status: ${response.status}`);
+      }
+      const data = await response.json();
+      return data.data || data;
     });
   }
 
   async updateTeamMember(id: string, teamData: FormData) {
-    return this.request(`/admin/team/${id}`, {
+    const headers = this.token ? { Authorization: `Bearer ${this.token}` } : {};
+    
+    return fetch(`${this.baseURL}/admin/team/${id}`, {
       method: 'PUT',
-      headers: {
-        ...(this.token && { Authorization: `Bearer ${this.token}` }),
-        // Don't set Content-Type for FormData, let browser set it with boundary
-      },
+      headers,
       body: teamData,
+    }).then(async response => {
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({ message: 'Network error' }));
+        throw new Error(errorData.message || `HTTP error! status: ${response.status}`);
+      }
+      const data = await response.json();
+      return data.data || data;
     });
   }
 
@@ -1033,9 +1045,9 @@ class ApiClient {
   }
 
   async bulkDeleteTeamMembers(memberIds: string[]) {
-    return this.request('/admin/team/bulk-delete', {
+    return this.request('/admin/team', {
       method: 'DELETE',
-      body: JSON.stringify({ memberIds }),
+      body: JSON.stringify({ ids: memberIds }),
     });
   }
 
