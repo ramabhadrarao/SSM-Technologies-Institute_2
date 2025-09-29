@@ -345,24 +345,84 @@ const CourseDetail: React.FC = () => {
               )}
 
               {selectedTab === 'instructor' && (
-                <div>
-                  <h2 className="text-2xl font-bold text-gray-900 mb-4">Meet Your Instructor</h2>
-                  <Card className="p-6">
-                    <div className="flex items-start space-x-4">
-                      <div className="w-16 h-16 bg-gradient-to-r from-blue-500 to-cyan-500 rounded-full flex items-center justify-center">
-                        <Users className="w-8 h-8 text-white" />
-                      </div>
-                      <div>
-                        <h3 className="text-xl font-semibold text-gray-900">Expert Instructor</h3>
-                        <p className="text-blue-600 mb-2">Industry Professional</p>
-                        <p className="text-gray-600">
-                          Learn from experienced professionals who bring real-world expertise to the classroom.
-                        </p>
-                      </div>
-                    </div>
-                  </Card>
+  <div>
+    <h2 className="text-2xl font-bold text-gray-900 mb-4">Meet Your Instructor</h2>
+    {course.instructor ? (
+      <Card className="p-6">
+        <div className="flex flex-col sm:flex-row items-start space-y-4 sm:space-y-0 sm:space-x-6">
+          {/* Instructor Avatar */}
+          <div className="flex-shrink-0">
+            {course.instructor.imageUrl ? (
+              <img
+                src={course.instructor.imageUrl}
+                alt={`${course.instructor.user.firstName} ${course.instructor.user.lastName}`}
+                className="w-24 h-24 rounded-full object-cover border-4 border-blue-100"
+              />
+            ) : (
+              <div className="w-24 h-24 bg-gradient-to-r from-blue-500 to-cyan-500 rounded-full flex items-center justify-center">
+                <Users className="w-12 h-12 text-white" />
+              </div>
+            )}
+          </div>
+          
+          {/* Instructor Details */}
+          <div className="flex-1">
+            <h3 className="text-xl font-semibold text-gray-900">
+              {course.instructor.user.firstName} {course.instructor.user.lastName}
+            </h3>
+            <p className="text-blue-600 font-medium mb-2">{course.instructor.designation}</p>
+            
+            {/* Instructor Stats */}
+            <div className="flex flex-wrap gap-4 mb-4">
+              <div className="flex items-center text-sm text-gray-600">
+                <Award className="w-4 h-4 mr-1 text-gray-400" />
+                <span>{course.instructor.experience} years experience</span>
+              </div>
+              <div className="flex items-center text-sm text-gray-600">
+                <Users className="w-4 h-4 mr-1 text-gray-400" />
+                <span>{course.instructor.totalStudents || 0} students taught</span>
+              </div>
+              {course.instructor.rating > 0 && (
+                <div className="flex items-center text-sm text-gray-600">
+                  <Star className="w-4 h-4 mr-1 text-yellow-500 fill-current" />
+                  <span>{course.instructor.rating.toFixed(1)} instructor rating</span>
                 </div>
               )}
+            </div>
+            
+            {/* Bio */}
+            <div className="prose prose-sm max-w-none text-gray-600">
+              <p>{course.instructor.bio}</p>
+            </div>
+            
+            {/* Approval Badge */}
+            {course.instructor.isApproved && (
+              <div className="mt-4 inline-flex items-center px-3 py-1 rounded-full text-xs font-medium bg-green-100 text-green-800">
+                <CheckCircle className="w-3 h-3 mr-1" />
+                Verified Instructor
+              </div>
+            )}
+          </div>
+        </div>
+      </Card>
+    ) : (
+      <Card className="p-6">
+        <div className="flex items-start space-x-4">
+          <div className="w-16 h-16 bg-gradient-to-r from-blue-500 to-cyan-500 rounded-full flex items-center justify-center">
+            <Users className="w-8 h-8 text-white" />
+          </div>
+          <div>
+            <h3 className="text-xl font-semibold text-gray-900">Instructor Information</h3>
+            <p className="text-gray-600 mt-2">
+              Instructor details will be available soon. This course is taught by experienced professionals 
+              who bring real-world expertise to the classroom.
+            </p>
+          </div>
+        </div>
+      </Card>
+    )}
+  </div>
+)}
 
               {selectedTab === 'materials' && user && user.role === 'student' && isEnrolled && (
                 <MaterialsTab courseId={id!} />

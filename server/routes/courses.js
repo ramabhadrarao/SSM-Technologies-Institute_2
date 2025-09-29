@@ -13,10 +13,68 @@ router.get('/',
   courseController.getCourses
 );
 
+// Get single course (public)
 router.get('/:id',
   rateLimiters.public,
   optionalAuth,
-  courseController.getCourse
+  async (req, res) => {
+    try {
+      const { id } = req.params;
+      
+      const course = await Course.findOne({ _id: id, isActive: true })
+        .populate('subjects', 'name description imageUrl')
+        .populate({
+          path: 'instructor',
+          select: 'user bio designation experience rating totalStudents imageUrl isApproved',
+          populate: {
+            path: 'user',
+            select: 'firstName lastName email phone'
+          }
+        })
+        .populate({
+          path: 'reviews.student',
+          populate: {
+            path: 'user',
+            select: 'firstName lastName'
+          }
+        })
+        .lean();
+
+      if (!course) {
+        return res.status(404).json({
+          success: false,
+          message: 'Course not found'
+        });
+      }
+
+      // Add file URLs
+      const { getFileUrl } = require('../middleware/upload');
+      const courseWithUrls = {
+        ...course,
+        imageUrl: getFileUrl(course.imageUrl),
+        videoUrl: course.videoUrl, // YouTube URL as is
+        subjects: course.subjects?.map(subject => ({
+          ...subject,
+          imageUrl: getFileUrl(subject.imageUrl)
+        })),
+        instructor: course.instructor ? {
+          ...course.instructor,
+          imageUrl: getFileUrl(course.instructor.imageUrl)
+        } : null
+      };
+
+      res.json({
+        success: true,
+        data: courseWithUrls
+      });
+    } catch (error) {
+      console.error('Get course error:', error);
+      res.status(500).json({
+        success: false,
+        message: 'Failed to get course'
+      });
+    }
+  }
 );
 
 // Protected routes - Admin and Instructor
