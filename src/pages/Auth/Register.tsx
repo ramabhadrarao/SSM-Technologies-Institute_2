@@ -91,7 +91,7 @@ const Register: React.FC = () => {
                     {...register('role', { required: 'Please select a role' })}
                     type="radio"
                     value="student"
-                    className="sr-only"
+                    className="peer sr-only"
                   />
                   <div className="border-2 border-gray-300 rounded-lg p-4 text-center hover:border-blue-500 peer-checked:border-blue-500 peer-checked:bg-blue-50 transition-colors">
                     <User className="h-8 w-8 mx-auto mb-2 text-blue-600" />
@@ -103,7 +103,7 @@ const Register: React.FC = () => {
                     {...register('role', { required: 'Please select a role' })}
                     type="radio"
                     value="instructor"
-                    className="sr-only"
+                    className="peer sr-only"
                   />
                   <div className="border-2 border-gray-300 rounded-lg p-4 text-center hover:border-blue-500 peer-checked:border-blue-500 peer-checked:bg-blue-50 transition-colors">
                     <UserCheck className="h-8 w-8 mx-auto mb-2 text-blue-600" />

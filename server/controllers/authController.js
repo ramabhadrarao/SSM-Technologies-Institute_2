@@ -60,8 +60,8 @@ const register = async (req, res) => {
     } else if (role === 'instructor') {
       const instructor = new Instructor({
         user: user._id,
-        bio: '',
-        designation: '',
+        bio: 'Instructor profile to be updated',
+        designation: 'Instructor',
         experience: 0,
         skills: [],
         certificates: [],
