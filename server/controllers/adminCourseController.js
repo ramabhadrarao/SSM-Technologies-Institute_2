@@ -65,7 +65,10 @@ const getAdminCourses = async (req, res) => {
       return {
         ...course,
         imageUrl: getFileUrl(course.imageUrl),
-        videoUrl: getFileUrl(course.videoUrl),
+        videoUrl: course.videoUrl, // YouTube URL returned as-is
+        youtubeEmbedUrl: course.videoUrl ? 
+          course.videoUrl.replace(/(?:youtube\.com\/(?:[^\/]+\/.+\/|(?:v|e(?:mbed)?)\/|.*[?&]v=)|youtu\.be\/)([^"&?\/\s]{11})/, 'https://www.youtube.com/embed/$1') : 
+          null,
         enrollmentCount,
         subjects: course.subjects.map(subject => ({
           ...subject,
@@ -132,7 +135,10 @@ const getAdminCourse = async (req, res) => {
     const courseWithDetails = {
       ...course,
       imageUrl: getFileUrl(course.imageUrl),
-      videoUrl: getFileUrl(course.videoUrl),
+      videoUrl: course.videoUrl, // YouTube URL returned as-is
+      youtubeEmbedUrl: course.videoUrl ? 
+        course.videoUrl.replace(/(?:youtube\.com\/(?:[^\/]+\/.+\/|(?:v|e(?:mbed)?)\/|.*[?&]v=)|youtu\.be\/)([^"&?\/\s]{11})/, 'https://www.youtube.com/embed/$1') : 
+        null,
       enrollmentStats,
       revenue,
       subjects: course.subjects.map(subject => ({
@@ -165,7 +171,8 @@ const createAdminCourse = async (req, res) => {
       structure, 
       subjects, 
       instructor,
-      isActive = true 
+      isActive = true,
+      videoUrl // YouTube video URL
     } = req.body;
     
     const courseData = {
@@ -176,17 +183,13 @@ const createAdminCourse = async (req, res) => {
       structure: structure ? JSON.parse(structure) : [],
       subjects: subjects ? JSON.parse(subjects) : [],
       instructor: instructor || null,
-      isActive
+      isActive,
+      videoUrl: videoUrl || null // Store YouTube URL directly
     };
 
-    // Add file URLs if uploaded
-    if (req.files) {
-      if (req.files.image) {
-        courseData.imageUrl = req.files.image[0].path;
-      }
-      if (req.files.video) {
-        courseData.videoUrl = req.files.video[0].path;
-      }
+    // Add image URL if uploaded
+    if (req.files && req.files.image) {
+      courseData.imageUrl = req.files.image[0].path;
     }
 
     const course = new Course(courseData);
@@ -204,7 +207,9 @@ const createAdminCourse = async (req, res) => {
       data: {
         ...populatedCourse.toObject(),
         imageUrl: getFileUrl(populatedCourse.imageUrl),
-        videoUrl: getFileUrl(populatedCourse.videoUrl)
+        videoUrl: populatedCourse.videoUrl, // Return YouTube URL as-is
+        youtubeEmbedUrl: populatedCourse.getYouTubeEmbedUrl(),
+        youtubeThumbnail: populatedCourse.getYouTubeThumbnail()
       }
     });
   } catch (error) {
@@ -229,7 +234,8 @@ const updateAdminCourse = async (req, res) => {
       structure, 
       subjects, 
       instructor,
-      isActive 
+      isActive,
+      videoUrl // YouTube video URL
     } = req.body;
     
     const course = await Course.findById(id);
@@ -249,23 +255,15 @@ const updateAdminCourse = async (req, res) => {
     if (subjects) course.subjects = JSON.parse(subjects);
     if (instructor) course.instructor = instructor;
     if (typeof isActive === 'boolean') course.isActive = isActive;
+    if (videoUrl !== undefined) course.videoUrl = videoUrl; // Update YouTube URL
 
-    // Handle file uploads
-    if (req.files) {
-      if (req.files.image) {
-        // Delete old image
-        if (course.imageUrl) {
-          deleteFile(course.imageUrl);
-        }
-        course.imageUrl = req.files.image[0].path;
+    // Handle image upload only (video is now YouTube URL)
+    if (req.files && req.files.image) {
+      // Delete old image
+      if (course.imageUrl) {
+        deleteFile(course.imageUrl);
       }
-      if (req.files.video) {
-        // Delete old video
-        if (course.videoUrl) {
-          deleteFile(course.videoUrl);
-        }
-        course.videoUrl = req.files.video[0].path;
-      }
+      course.imageUrl = req.files.image[0].path;
     }
 
     await course.save();
@@ -282,7 +280,9 @@ const updateAdminCourse = async (req, res) => {
       data: {
         ...updatedCourse.toObject(),
         imageUrl: getFileUrl(updatedCourse.imageUrl),
-        videoUrl: getFileUrl(updatedCourse.videoUrl)
+        videoUrl: updatedCourse.videoUrl, // Return YouTube URL as-is
+        youtubeEmbedUrl: updatedCourse.getYouTubeEmbedUrl(),
+        youtubeThumbnail: updatedCourse.getYouTubeThumbnail()
       }
     });
   } catch (error) {
@@ -323,7 +323,7 @@ const deleteAdminCourse = async (req, res) => {
     if (hard === 'true') {
       // Hard delete
       if (course.imageUrl) deleteFile(course.imageUrl);
-      if (course.videoUrl) deleteFile(course.videoUrl);
+      // No need to delete video file since it's now a YouTube URL
       await Course.findByIdAndDelete(id);
     } else {
       // Soft delete

@@ -16,7 +16,16 @@ const courseSchema = new mongoose.Schema({
   },
   videoUrl: {
     type: String,
-    default: null
+    default: null,
+    validate: {
+      validator: function(v) {
+        if (!v) return true; // Allow null/empty values
+        // YouTube URL validation regex
+        const youtubeRegex = /^(https?:\/\/)?(www\.)?(youtube\.com\/(watch\?v=|embed\/)|youtu\.be\/)[\w-]+(&[\w=]*)?$/;
+        return youtubeRegex.test(v);
+      },
+      message: 'Please provide a valid YouTube URL'
+    }
   },
   fees: {
     type: Number,
@@ -79,5 +88,26 @@ courseSchema.index({ name: 1 });
 courseSchema.index({ isActive: 1 });
 courseSchema.index({ fees: 1 });
 courseSchema.index({ rating: -1 });
+
+// Helper method to extract YouTube video ID from URL
+courseSchema.methods.getYouTubeVideoId = function() {
+  if (!this.videoUrl) return null;
+  
+  const regex = /(?:youtube\.com\/(?:[^\/]+\/.+\/|(?:v|e(?:mbed)?)\/|.*[?&]v=)|youtu\.be\/)([^"&?\/\s]{11})/;
+  const match = this.videoUrl.match(regex);
+  return match ? match[1] : null;
+};
+
+// Helper method to get YouTube embed URL
+courseSchema.methods.getYouTubeEmbedUrl = function() {
+  const videoId = this.getYouTubeVideoId();
+  return videoId ? `https://www.youtube.com/embed/${videoId}` : null;
+};
+
+// Helper method to get YouTube thumbnail URL
+courseSchema.methods.getYouTubeThumbnail = function(quality = 'maxresdefault') {
+  const videoId = this.getYouTubeVideoId();
+  return videoId ? `https://img.youtube.com/vi/${videoId}/${quality}.jpg` : null;
+};
 
 module.exports = mongoose.model('Course', courseSchema);

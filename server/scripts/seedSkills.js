@@ -96,7 +96,7 @@ const skills = [
 async function seedSkills() {
   try {
     // Connect to MongoDB
-    await mongoose.connect(process.env.MONGODB_URI || 'mongodb://localhost:27017/ssm_technologies');
+    await mongoose.connect(process.env.MONGODB_URI || 'mongodb://localhost:27017/ssm_technologies_latest');
     console.log('✅ Connected to MongoDB');
 
     // Clear existing skills

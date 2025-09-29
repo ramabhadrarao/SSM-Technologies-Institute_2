@@ -105,10 +105,25 @@ const CourseDetail: React.FC = () => {
 
   const tabs = [
     { id: 'overview', label: 'Overview' },
+    { id: 'video', label: 'Video Preview' },
     { id: 'curriculum', label: 'Curriculum' },
     { id: 'instructor', label: 'Instructor' },
     { id: 'reviews', label: 'Reviews' }
   ];
+
+  // Helper function to extract YouTube video ID and create embed URL
+  const getYouTubeEmbedUrl = (url: string) => {
+    if (!url) return null;
+    
+    const regExp = /^.*(youtu.be\/|v\/|u\/\w\/|embed\/|watch\?v=|&v=)([^#&?]*).*/;
+    const match = url.match(regExp);
+    
+    if (match && match[2].length === 11) {
+      return `https://www.youtube.com/embed/${match[2]}`;
+    }
+    
+    return null;
+  };
 
   return (
     <div className="min-h-screen bg-gray-50">
@@ -195,7 +210,7 @@ const CourseDetail: React.FC = () => {
                     {user ? 'Login as Student to Enroll' : 'Login to Enroll'}
                   </Button>
                 )}
-                <Button variant="outline" size="lg">
+                <Button variant="outline" size="lg" onClick={() => setSelectedTab('video')}>
                   <PlayCircle className="w-5 h-5 mr-2" />
                   Preview Course
                 </Button>
@@ -251,6 +266,32 @@ const CourseDetail: React.FC = () => {
                       </div>
                     )}
                   </div>
+                </div>
+              )}
+
+              {selectedTab === 'video' && (
+                <div>
+                  <h2 className="text-2xl font-bold text-gray-900 mb-4">Course Video Preview</h2>
+                  {course.videoUrl && getYouTubeEmbedUrl(course.videoUrl) ? (
+                    <div className="aspect-video bg-gray-100 rounded-lg overflow-hidden">
+                      <iframe
+                        src={getYouTubeEmbedUrl(course.videoUrl)!}
+                        title={`${course.name} - Video Preview`}
+                        className="w-full h-full"
+                        frameBorder="0"
+                        allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+                        allowFullScreen
+                      />
+                    </div>
+                  ) : (
+                    <div className="aspect-video bg-gray-100 rounded-lg flex items-center justify-center">
+                      <div className="text-center">
+                        <PlayCircle className="w-16 h-16 text-gray-400 mx-auto mb-4" />
+                        <h3 className="text-lg font-medium text-gray-900 mb-2">No Video Preview Available</h3>
+                        <p className="text-gray-600">Video preview will be available soon.</p>
+                      </div>
+                    </div>
+                  )}
                 </div>
               )}
 

@@ -62,6 +62,7 @@ interface CourseFormData {
   subjects: string[];
   instructor: string;
   isActive: boolean;
+  videoUrl: string; // YouTube video URL
 }
 
 const AdminCoursesManagement: React.FC = () => {
@@ -88,10 +89,10 @@ const AdminCoursesManagement: React.FC = () => {
     structure: [],
     subjects: [],
     instructor: '',
-    isActive: true
+    isActive: true,
+    videoUrl: '' // YouTube video URL
   });
   const [imageFile, setImageFile] = useState<File | null>(null);
-  const [videoFile, setVideoFile] = useState<File | null>(null);
   const [newStructureItem, setNewStructureItem] = useState('');
 
   useEffect(() => {
@@ -157,12 +158,10 @@ const AdminCoursesManagement: React.FC = () => {
       formData.append('subjects', JSON.stringify(courseFormData.subjects));
       formData.append('instructor', courseFormData.instructor);
       formData.append('isActive', courseFormData.isActive.toString());
+      formData.append('videoUrl', courseFormData.videoUrl); // YouTube URL
       
       if (imageFile) {
         formData.append('image', imageFile);
-      }
-      if (videoFile) {
-        formData.append('video', videoFile);
       }
 
       await apiClient.createAdminCourse(formData);
@@ -194,12 +193,10 @@ const AdminCoursesManagement: React.FC = () => {
       formData.append('subjects', JSON.stringify(courseFormData.subjects));
       formData.append('instructor', courseFormData.instructor);
       formData.append('isActive', courseFormData.isActive.toString());
+      formData.append('videoUrl', courseFormData.videoUrl); // YouTube URL
       
       if (imageFile) {
         formData.append('image', imageFile);
-      }
-      if (videoFile) {
-        formData.append('video', videoFile);
       }
 
       await apiClient.updateAdminCourse(editingCourse._id, formData);
@@ -269,7 +266,8 @@ const AdminCoursesManagement: React.FC = () => {
       structure: course.structure || [],
       subjects: course.subjects?.map(s => s._id) || [],
       instructor: course.instructor?._id || '',
-      isActive: course.isActive
+      isActive: course.isActive,
+      videoUrl: course.videoUrl || '' // YouTube URL
     });
     setShowCourseModal(true);
   };
@@ -283,10 +281,10 @@ const AdminCoursesManagement: React.FC = () => {
       structure: [],
       subjects: [],
       instructor: '',
-      isActive: true
+      isActive: true,
+      videoUrl: '' // YouTube URL
     });
     setImageFile(null);
-    setVideoFile(null);
     setNewStructureItem('');
   };
 
@@ -880,7 +878,7 @@ const AdminCoursesManagement: React.FC = () => {
                   </div>
                 </div>
 
-                {/* File Uploads */}
+                {/* File Uploads and Video URL */}
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   <div>
                     <label className="block text-sm font-medium text-gray-700 mb-1">
@@ -902,21 +900,18 @@ const AdminCoursesManagement: React.FC = () => {
                   </div>
                   <div>
                     <label className="block text-sm font-medium text-gray-700 mb-1">
-                      Course Video
+                      YouTube Video URL
                     </label>
-                    <div className="border-2 border-dashed border-gray-300 rounded-lg p-4 hover:border-gray-400 transition-colors">
-                      <input
-                        type="file"
-                        accept="video/*"
-                        onChange={(e) => setVideoFile(e.target.files?.[0] || null)}
-                        className="w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-lg file:border-0 file:text-sm file:font-semibold file:bg-blue-50 file:text-blue-700 hover:file:bg-blue-100"
-                      />
-                      {videoFile && (
-                        <p className="mt-2 text-sm text-green-600">
-                          Selected: {videoFile.name}
-                        </p>
-                      )}
-                    </div>
+                    <input
+                      type="url"
+                      value={courseFormData.videoUrl}
+                      onChange={(e) => setCourseFormData({...courseFormData, videoUrl: e.target.value})}
+                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                      placeholder="https://www.youtube.com/watch?v=..."
+                    />
+                    <p className="mt-1 text-xs text-gray-500">
+                      Enter a valid YouTube video URL (e.g., https://www.youtube.com/watch?v=dQw4w9WgXcQ)
+                    </p>
                   </div>
                 </div>
 
