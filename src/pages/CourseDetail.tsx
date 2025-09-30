@@ -88,7 +88,7 @@ const CourseDetail: React.FC = () => {
     try {
       setEnrolling(true);
       await apiClient.enrollInCourse(id!);
-      toast.success('Successfully enrolled in the course!');
+      toast.success('Enrollment request submitted! Your enrollment is pending admin approval.');
       setIsEnrolled(true); // Update enrollment status
       fetchCourse(); // Refresh course data
     } catch (error: any) {

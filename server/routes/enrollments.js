@@ -53,7 +53,7 @@ router.post('/:courseId', auth, async (req, res) => {
     student.enrolledCourses.push({
       course: courseId,
       enrolledAt: new Date(),
-      status: 'active',
+      status: 'suspended',
       progress: 0
     });
 
