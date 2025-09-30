@@ -273,7 +273,7 @@ const Courses: React.FC = () => {
                       </span>
                     </div>
                     
-                    {course.rating && course.rating > 0 && (
+                    {course.rating > 0 && (
                       <div className="absolute top-4 left-4 bg-white/95 backdrop-blur-sm px-2 py-1 rounded-full">
                         <div className="flex items-center">
                           <Star className="w-4 h-4 text-yellow-400 fill-current" />

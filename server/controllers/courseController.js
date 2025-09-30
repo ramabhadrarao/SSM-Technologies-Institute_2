@@ -39,17 +39,26 @@ const getCourses = async (req, res) => {
     // Get total count for pagination
     const total = await Course.countDocuments(query);
 
-    // Add file URLs
-    const coursesWithUrls = courses.map(course => ({
-      ...course,
-      imageUrl: getFileUrl(course.imageUrl),
-      videoUrl: getFileUrl(course.videoUrl)
+    // Add file URLs and enrollment count
+    const Student = require('../models/Student');
+    const coursesWithDetails = await Promise.all(courses.map(async (course) => {
+      // Get enrollment count from students
+      const enrollmentCount = await Student.countDocuments({
+        'enrolledCourses.course': course._id
+      });
+
+      return {
+        ...course,
+        imageUrl: getFileUrl(course.imageUrl),
+        videoUrl: getFileUrl(course.videoUrl),
+        enrollmentCount
+      };
     }));
 
     res.json({
       success: true,
       data: {
-        courses: coursesWithUrls,
+        courses: coursesWithDetails,
         pagination: {
           current: parseInt(page),
           pages: Math.ceil(total / limit),
