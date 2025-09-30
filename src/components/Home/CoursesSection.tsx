@@ -106,12 +106,12 @@ const CoursesSection: React.FC = () => {
                     Learn More
                     <ArrowRight className="w-4 h-4 ml-1" />
                   </Link>
-                  <Link
+                  {/* <Link
                     to="/register"
                     className="bg-gradient-to-r from-blue-600 to-cyan-600 text-white px-4 py-2 rounded-lg text-sm font-medium hover:from-blue-700 hover:to-cyan-700 transition-all duration-200"
                   >
                     Enroll Now
-                  </Link>
+                  </Link> */}
                 </div>
               </div>
             </Card>
