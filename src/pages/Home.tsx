@@ -29,10 +29,10 @@ const Home: React.FC = () => {
   ];
 
   const stats = [
-    { number: '1000+', label: 'Students Enrolled' },
-    { number: '50+', label: 'Expert Instructors' },
-    { number: '25+', label: 'Courses Available' },
-    { number: '95%', label: 'Success Rate' },
+    { number: '500+', label: 'Students Enrolled' },
+    { number: '20+', label: 'Expert Instructors' },
+    { number: '20+', label: 'Courses Available' },
+    { number: '90%', label: 'Success Rate' },
   ];
 
   const testimonials = [

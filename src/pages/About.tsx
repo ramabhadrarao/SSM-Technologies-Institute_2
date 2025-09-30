@@ -63,10 +63,10 @@ const About: React.FC = () => {
   };
 
   const stats = [
-    { icon: <Users className="w-8 h-8" />, number: '5000+', label: 'Students Trained' },
-    { icon: <Award className="w-8 h-8" />, number: '95%', label: 'Placement Rate' },
+    { icon: <Users className="w-8 h-8" />, number: '500+', label: 'Students Trained' },
+    { icon: <Award className="w-8 h-8" />, number: '75%', label: 'Placement Rate' },
     { icon: <BookOpen className="w-8 h-8" />, number: '25+', label: 'Expert Courses' },
-    { icon: <TrendingUp className="w-8 h-8" />, number: '200+', label: 'Industry Partners' },
+    { icon: <TrendingUp className="w-8 h-8" />, number: '20+', label: 'Industry Partners' },
   ];
 
   const values = [
