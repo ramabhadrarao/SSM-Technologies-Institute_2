@@ -1,4 +1,6 @@
 const Slider = require('../models/Slider');
+const fs = require('fs');
+const path = require('path');
 
 // Get all sliders (admin)
 const getAllSliders = async (req, res) => {

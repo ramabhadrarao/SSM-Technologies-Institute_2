@@ -35,9 +35,24 @@ app.use(cors({
   allowedHeaders: ['Content-Type', 'Authorization']
 }));
 
-// Body parsing middleware
-app.use(express.json({ limit: '10mb' }));
-app.use(express.urlencoded({ extended: true, limit: '10mb' }));
+// Body parsing middleware - Skip for multipart/form-data
+app.use((req, res, next) => {
+  if (req.get('Content-Type')?.includes('multipart/form-data')) {
+    // Skip body parsing for multipart/form-data - let Multer handle it
+    return next();
+  }
+  // Apply JSON and URL-encoded parsing for other content types
+  express.json({ limit: '10mb' })(req, res, next);
+});
+
+app.use((req, res, next) => {
+  if (req.get('Content-Type')?.includes('multipart/form-data')) {
+    // Skip body parsing for multipart/form-data - let Multer handle it
+    return next();
+  }
+  // Apply URL-encoded parsing for other content types
+  express.urlencoded({ extended: true, limit: '10mb' })(req, res, next);
+});
 
 // Apply sanitization after JSON parsing
 app.use(sanitizeInput);

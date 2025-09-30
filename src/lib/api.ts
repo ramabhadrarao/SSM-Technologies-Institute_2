@@ -39,6 +39,19 @@ class ApiClient {
     // Don't set Content-Type for FormData - let browser set it automatically with boundary
     const isFormData = options.body instanceof FormData;
     
+    console.log('=== API CLIENT DEBUG ===');
+    console.log('Endpoint:', endpoint);
+    console.log('Is FormData:', isFormData);
+    console.log('Body type:', typeof options.body);
+    console.log('Body instanceof FormData:', options.body instanceof FormData);
+    
+    if (isFormData) {
+      console.log('FormData entries in API client:');
+      for (let [key, value] of (options.body as FormData).entries()) {
+        console.log(`${key}:`, value);
+      }
+    }
+    
     const config: RequestInit = {
       headers: {
         ...(!isFormData && { 'Content-Type': 'application/json' }),
@@ -47,6 +60,10 @@ class ApiClient {
       },
       ...options,
     };
+
+    console.log('Final config headers:', config.headers);
+    console.log('Final config body:', config.body);
+    console.log('=== END API CLIENT DEBUG ===');
 
     const response = await fetch(url, config);
     
@@ -1332,6 +1349,51 @@ async downloadCourseMaterial(materialId: string) {
 
   async getPublicTeamMembers() {
     return this.request('/team');
+  }
+
+  // ========== SLIDER METHODS ==========
+  async getSliders() {
+    return this.request('/sliders');
+  }
+
+  async getSlider(id: string) {
+    return this.request(`/sliders/${id}`);
+  }
+
+  async createSlider(sliderData: FormData) {
+    return this.request('/sliders', {
+      method: 'POST',
+      body: sliderData,
+    });
+  }
+
+  async updateSlider(id: string, sliderData: FormData) {
+    return this.request(`/sliders/${id}`, {
+      method: 'PUT',
+      body: sliderData,
+    });
+  }
+
+  async deleteSlider(id: string) {
+    return this.request(`/sliders/${id}`, {
+      method: 'DELETE',
+    });
+  }
+
+  async setDefaultSlider(id: string) {
+    return this.request(`/sliders/${id}/default`, {
+      method: 'PATCH',
+    });
+  }
+
+  async toggleSliderStatus(id: string, isActive: boolean) {
+    const formData = new FormData();
+    formData.append('isActive', isActive.toString());
+    
+    return this.request(`/sliders/${id}`, {
+      method: 'PUT',
+      body: formData,
+    });
   }
 
   // ========== BASIC HTTP METHODS ==========
