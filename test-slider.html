@@ -1,0 +1,97 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Test Slider Creation</title>
+</head>
+<body>
+    <h1>Test Slider Creation</h1>
+    <form id="sliderForm">
+        <div>
+            <label for="title">Title:</label>
+            <input type="text" id="title" name="title" value="Test Slider Title" required>
+        </div>
+        <div>
+            <label for="description">Description:</label>
+            <textarea id="description" name="description" required>Test slider description</textarea>
+        </div>
+        <div>
+            <label for="buttonText">Button Text:</label>
+            <input type="text" id="buttonText" name="buttonText" value="Learn More">
+        </div>
+        <div>
+            <label for="buttonLink">Button Link:</label>
+            <input type="text" id="buttonLink" name="buttonLink" value="https://example.com">
+        </div>
+        <div>
+            <label for="order">Order:</label>
+            <input type="number" id="order" name="order" value="1">
+        </div>
+        <div>
+            <label for="isActive">Active:</label>
+            <input type="checkbox" id="isActive" name="isActive" checked>
+        </div>
+        <div>
+            <label for="isDefault">Default:</label>
+            <input type="checkbox" id="isDefault" name="isDefault">
+        </div>
+        <div>
+            <label for="image">Image:</label>
+            <input type="file" id="image" name="image" accept="image/*">
+        </div>
+        <button type="submit">Create Slider</button>
+    </form>
+
+    <div id="result"></div>
+
+    <script>
+        document.getElementById('sliderForm').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            
+            const formData = new FormData();
+            formData.append('title', document.getElementById('title').value);
+            formData.append('description', document.getElementById('description').value);
+            formData.append('buttonText', document.getElementById('buttonText').value);
+            formData.append('buttonLink', document.getElementById('buttonLink').value);
+            formData.append('order', document.getElementById('order').value);
+            formData.append('isActive', document.getElementById('isActive').checked.toString());
+            formData.append('isDefault', document.getElementById('isDefault').checked.toString());
+            
+            const imageFile = document.getElementById('image').files[0];
+            if (imageFile) {
+                formData.append('image', imageFile);
+            }
+
+            console.log('FormData entries:');
+            for (let [key, value] of formData.entries()) {
+                console.log(key, value);
+            }
+
+            try {
+                const response = await fetch('http://localhost:3001/api/sliders', {
+                    method: 'POST',
+                    headers: {
+                        'Authorization': 'Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ1c2VySWQiOiI2OGRhNmZlMDliNWFlZGUwMjAxNWQ0YzEiLCJlbWFpbCI6ImFkbWluQHNzbXRlY2hub2xvZ2llcy5jby5pbiIsInJvbGUiOiJhZG1pbiIsImlhdCI6MTczODIwNzM5MSwiZXhwIjoxNzM4MjkzNzkxfQ.Ej8Ej8Ej8Ej8Ej8Ej8Ej8Ej8Ej8Ej8Ej8Ej8Ej8Ej8'
+                    },
+                    body: formData
+                });
+
+                const result = await response.json();
+                document.getElementById('result').innerHTML = `
+                    <h3>Response:</h3>
+                    <pre>${JSON.stringify(result, null, 2)}</pre>
+                    <p>Status: ${response.status}</p>
+                `;
+                console.log('Response:', result);
+            } catch (error) {
+                document.getElementById('result').innerHTML = `
+                    <h3>Error:</h3>
+                    <pre>${error.message}</pre>
+                `;
+                console.error('Error:', error);
+            }
+        });
+    </script>
+</body>
+</html>

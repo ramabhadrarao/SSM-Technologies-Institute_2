@@ -31,6 +31,7 @@ import AdminReportsAnalytics from './pages/Admin/ReportsAnalytics';
 import AdminSystemSettings from './pages/Admin/SystemSettings';
 import AdminTeamManagement from './pages/Admin/TeamManagement';
 import AdminEnrollmentManagement from './pages/Admin/EnrollmentManagement';
+import AdminSlidersManagement from './pages/Admin/SlidersManagement';
 import StudentDashboard from './pages/Student/Dashboard';
 import InstructorDashboard from './pages/Instructor/Dashboard';
 import InstructorProfile from './pages/Instructor/Profile';
@@ -71,6 +72,7 @@ function App() {
                 <Route path="/admin/messages" element={<AdminMessagesManagement />} />
                 <Route path="/admin/reports" element={<AdminReportsAnalytics />} />
                 <Route path="/admin/settings" element={<AdminSystemSettings />} />
+                <Route path="/admin/sliders" element={<AdminSlidersManagement />} />
 
                 {/* Student & Instructor Routes */}
                 <Route path="/student/dashboard" element={<StudentDashboard />} />

@@ -36,9 +36,12 @@ class ApiClient {
   private async request<T>(endpoint: string, options: RequestInit = {}): Promise<T> {
     const url = `${this.baseURL}${endpoint}`;
     
+    // Don't set Content-Type for FormData - let browser set it automatically with boundary
+    const isFormData = options.body instanceof FormData;
+    
     const config: RequestInit = {
       headers: {
-        'Content-Type': 'application/json',
+        ...(!isFormData && { 'Content-Type': 'application/json' }),
         ...(this.token && { Authorization: `Bearer ${this.token}` }),
         ...options.headers,
       },

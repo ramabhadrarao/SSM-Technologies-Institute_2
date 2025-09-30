@@ -16,7 +16,8 @@ import {
   BarChart3,
   FileText,
   IndianRupee,
-  UserCog
+  UserCog,
+  Image as ImageIcon
 } from 'lucide-react';
 import { useAuth } from '../../contexts/AuthContext';
 import { apiClient } from '../../lib/api';
@@ -212,6 +213,13 @@ const AdminDashboard: React.FC = () => {
       icon: <BarChart3 className="w-6 h-6" />,
       href: '/admin/reports',
       color: 'bg-indigo-50 text-indigo-600'
+    },
+    {
+      title: 'Slider Management',
+      description: 'Manage hero slider images and content',
+      icon: <ImageIcon className="w-6 h-6" />,
+      href: '/admin/sliders',
+      color: 'bg-pink-50 text-pink-600'
     },
     {
       title: 'System Settings',

@@ -12,7 +12,7 @@ const sliderSchema = new mongoose.Schema({
   },
   imageUrl: {
     type: String,
-    required: true
+    required: false
   },
   buttonText: {
     type: String,
@@ -30,6 +30,10 @@ const sliderSchema = new mongoose.Schema({
   isActive: {
     type: Boolean,
     default: true
+  },
+  isDefault: {
+    type: Boolean,
+    default: false
   }
 }, {
   timestamps: true
@@ -38,5 +42,6 @@ const sliderSchema = new mongoose.Schema({
 // Indexes
 sliderSchema.index({ order: 1 });
 sliderSchema.index({ isActive: 1 });
+sliderSchema.index({ isDefault: 1 });
 
 module.exports = mongoose.model('Slider', sliderSchema);
