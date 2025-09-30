@@ -403,6 +403,90 @@ const getLastBackupTime = async () => {
   }
 };
 
+// Get public settings (only general category for non-authenticated users)
+const getPublicSettings = async (req, res) => {
+  try {
+    // Initialize defaults if no settings exist
+    await Settings.initializeDefaults();
+    
+    // Get only general settings for public access
+    const generalSettings = await Settings.getByCategory('general');
+    
+    res.json({
+      success: true,
+      data: {
+        general: generalSettings || {}
+      }
+    });
+  } catch (error) {
+    console.error('Get public settings error:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Failed to get public settings',
+      data: {
+        general: {
+          siteName: 'SSM Technologies',
+          siteDescription: 'Leading Coaching Institute for Technology Education',
+          contactEmail: 'info@ssmtechnologies.co.in',
+          contactPhone: '+91 98765 43210',
+          address: '123 Education Street, Knowledge City, Chennai, Tamil Nadu 600001',
+          timezone: 'Asia/Kolkata',
+          language: 'en',
+          currency: 'INR'
+        }
+      }
+    });
+  }
+};
+
+// Get specific public setting category (only general allowed)
+const getPublicSettingCategory = async (req, res) => {
+  try {
+    const { category } = req.params;
+    
+    // Only allow general category for public access
+    if (category !== 'general') {
+      return res.status(403).json({
+        success: false,
+        message: 'Access denied. Only general settings are publicly available.'
+      });
+    }
+    
+    // Initialize defaults if no settings exist
+    await Settings.initializeDefaults();
+    
+    const settings = await Settings.getByCategory(category);
+    
+    if (!settings) {
+      return res.status(404).json({
+        success: false,
+        message: 'Setting category not found'
+      });
+    }
+
+    res.json({
+      success: true,
+      data: settings
+    });
+  } catch (error) {
+    console.error('Get public setting category error:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Failed to get public setting category',
+      data: {
+        siteName: 'SSM Technologies',
+        siteDescription: 'Leading Coaching Institute for Technology Education',
+        contactEmail: 'info@ssmtechnologies.co.in',
+        contactPhone: '+91 98765 43210',
+        address: '123 Education Street, Knowledge City, Chennai, Tamil Nadu 600001',
+        timezone: 'Asia/Kolkata',
+        language: 'en',
+        currency: 'INR'
+      }
+    });
+  }
+};
+
 module.exports = {
   getSystemSettings,
   getSettingCategory,
@@ -412,5 +496,7 @@ module.exports = {
   backupSystem,
   testEmailConfig,
   getMaintenanceMode,
-  toggleMaintenanceMode
+  toggleMaintenanceMode,
+  getPublicSettings,
+  getPublicSettingCategory
 };

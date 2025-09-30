@@ -4,7 +4,7 @@ import { Mail, Phone, MapPin, Facebook, Twitter, Instagram, Linkedin } from 'luc
 import { useSettings } from '../../hooks/useSettings';
 
 const Footer: React.FC = () => {
-  const { generalSettings, loading } = useSettings();
+  const { generalSettings, allSettings, loading } = useSettings();
 
   return (
     <footer className="bg-gradient-to-br from-gray-900 via-blue-900 to-cyan-900 text-white">
@@ -129,6 +129,17 @@ const Footer: React.FC = () => {
                   )}
                 </p>
               </div>
+              
+              {/* Additional Email Information */}
+              {allSettings?.email && allSettings.email.fromEmail && allSettings.email.fromEmail !== generalSettings?.contactEmail && (
+                <div className="flex items-center space-x-3 pt-2 border-t border-gray-600">
+                  <Mail className="w-4 h-4 text-cyan-400 flex-shrink-0" />
+                  <div>
+                    <p className="text-gray-400 text-xs">Official correspondence:</p>
+                    <p className="text-gray-300 text-sm">{allSettings.email.fromEmail}</p>
+                  </div>
+                </div>
+              )}
             </div>
           </div>
         </div>
@@ -136,7 +147,7 @@ const Footer: React.FC = () => {
         <div className="border-t border-gray-700 mt-8 pt-8">
           <div className="flex flex-col md:flex-row justify-between items-center space-y-4 md:space-y-0">
             <p className="text-gray-400 text-sm">
-              © 2025 SSM Technologies. All rights reserved.
+              © 2025 {generalSettings?.siteName || "SSM Technologies"}. All rights reserved.
             </p>
             <div className="flex space-x-6">
               <Link to="/privacy" className="text-gray-400 hover:text-blue-400 text-sm transition-colors">
@@ -145,6 +156,14 @@ const Footer: React.FC = () => {
               <Link to="/terms" className="text-gray-400 hover:text-blue-400 text-sm transition-colors">
                 Terms of Service
               </Link>
+              {allSettings?.email && allSettings.email.supportEmail && (
+                <a 
+                  href={`mailto:${allSettings.email.supportEmail}`} 
+                  className="text-gray-400 hover:text-blue-400 text-sm transition-colors"
+                >
+                  Support
+                </a>
+              )}
             </div>
           </div>
         </div>

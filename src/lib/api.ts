@@ -1102,6 +1102,43 @@ async downloadCourseMaterial(materialId: string) {
     return this.request(`/admin/settings/${category}`);
   }
 
+  // ========== PUBLIC SETTINGS (No Authentication Required) ==========
+  async getPublicSettings() {
+    // Create a temporary request method without authentication
+    const url = `${this.baseURL}/settings/public`;
+    const response = await fetch(url, {
+      headers: {
+        'Content-Type': 'application/json',
+      },
+    });
+    
+    if (!response.ok) {
+      const errorData = await response.json().catch(() => ({ message: 'Network error' }));
+      throw new Error(errorData.message || `HTTP error! status: ${response.status}`);
+    }
+
+    const data = await response.json();
+    return data.data || data;
+  }
+
+  async getPublicSettingCategory(category: string) {
+    // Create a temporary request method without authentication
+    const url = `${this.baseURL}/settings/public/${category}`;
+    const response = await fetch(url, {
+      headers: {
+        'Content-Type': 'application/json',
+      },
+    });
+    
+    if (!response.ok) {
+      const errorData = await response.json().catch(() => ({ message: 'Network error' }));
+      throw new Error(errorData.message || `HTTP error! status: ${response.status}`);
+    }
+
+    const data = await response.json();
+    return data.data || data;
+  }
+
   async updateSystemSettings(category: string, settings: any) {
     return this.request('/admin/settings', {
       method: 'PUT',
