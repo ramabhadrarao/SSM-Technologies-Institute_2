@@ -1,6 +1,7 @@
 // server/controllers/settingsController.js
 const User = require('../models/User');
 const Course = require('../models/Course');
+const Settings = require('../models/Settings');
 const fs = require('fs').promises;
 const path = require('path');
 
@@ -76,8 +77,11 @@ let systemSettings = {
 // Get all system settings
 const getSystemSettings = async (req, res) => {
   try {
-    // In production, load from database
-    const settings = await loadSettingsFromFile();
+    // Initialize defaults if no settings exist
+    await Settings.initializeDefaults();
+    
+    // Get all settings from database
+    const settings = await Settings.getAllSettings();
     
     res.json({
       success: true,
@@ -97,9 +101,13 @@ const getSystemSettings = async (req, res) => {
 const getSettingCategory = async (req, res) => {
   try {
     const { category } = req.params;
-    const settings = await loadSettingsFromFile();
     
-    if (!settings[category]) {
+    // Initialize defaults if no settings exist
+    await Settings.initializeDefaults();
+    
+    const settings = await Settings.getByCategory(category);
+    
+    if (!settings) {
       return res.status(404).json({
         success: false,
         message: 'Setting category not found'
@@ -108,7 +116,7 @@ const getSettingCategory = async (req, res) => {
 
     res.json({
       success: true,
-      data: settings[category]
+      data: settings
     });
   } catch (error) {
     console.error('Get setting category error:', error);
@@ -131,26 +139,16 @@ const updateSystemSettings = async (req, res) => {
       });
     }
 
-    const currentSettings = await loadSettingsFromFile();
+    // Get user ID from request (if available)
+    const userId = req.user ? req.user.id : null;
     
-    // Validate category exists
-    if (!currentSettings[category]) {
-      return res.status(404).json({
-        success: false,
-        message: 'Setting category not found'
-      });
-    }
-
-    // Update the specific category
-    currentSettings[category] = { ...currentSettings[category], ...newSettings };
-    
-    // Save to file
-    await saveSettingsToFile(currentSettings);
+    // Update the specific category using the model
+    const updatedSettings = await Settings.updateByCategory(category, newSettings, userId);
     
     res.json({
       success: true,
       message: 'Settings updated successfully',
-      data: currentSettings[category]
+      data: updatedSettings
     });
   } catch (error) {
     console.error('Update system settings error:', error);
@@ -166,24 +164,20 @@ const resetSettings = async (req, res) => {
   try {
     const { category } = req.body;
     
-    if (category && systemSettings[category]) {
-      const currentSettings = await loadSettingsFromFile();
-      currentSettings[category] = systemSettings[category];
-      await saveSettingsToFile(currentSettings);
-      
+    // Use the model's reset method
+    const resetData = await Settings.resetToDefault(category);
+    
+    if (category) {
       res.json({
         success: true,
         message: `${category} settings reset to default`,
-        data: currentSettings[category]
+        data: resetData
       });
     } else {
-      // Reset all settings
-      await saveSettingsToFile(systemSettings);
-      
       res.json({
         success: true,
         message: 'All settings reset to default',
-        data: systemSettings
+        data: resetData
       });
     }
   } catch (error) {
@@ -251,11 +245,13 @@ const backupSystem = async (req, res) => {
   try {
     const backupData = {
       timestamp: new Date().toISOString(),
-      settings: await loadSettingsFromFile(),
-      statistics: {
-        totalUsers: await User.countDocuments({}),
-        totalCourses: await Course.countDocuments({}),
-        totalRevenue: await calculateTotalRevenue()
+      users: await User.find({}).select('-password'),
+      courses: await Course.find({}),
+      settings: await Settings.getAllSettings(),
+      systemInfo: {
+        version: '1.0.0',
+        environment: process.env.NODE_ENV || 'development',
+        nodeVersion: process.version
       }
     };
 
@@ -294,12 +290,12 @@ const testEmailConfig = async (req, res) => {
       });
     }
 
-    const settings = await loadSettingsFromFile();
-    const emailSettings = settings.email;
+    // Get email settings from database
+    const emailSettings = await Settings.getByCategory('email');
 
     // Here you would implement actual email sending
     // For now, just simulate the test
-    if (!emailSettings.smtpHost || !emailSettings.smtpUser) {
+    if (!emailSettings || !emailSettings.smtpHost || !emailSettings.smtpUser) {
       return res.status(400).json({
         success: false,
         message: 'Email configuration is incomplete'
@@ -332,16 +328,16 @@ const testEmailConfig = async (req, res) => {
 // Get maintenance mode status
 const getMaintenanceMode = async (req, res) => {
   try {
-    const settings = await loadSettingsFromFile();
-    const maintenanceMode = settings.maintenance || {
-      enabled: false,
-      message: 'System is under maintenance. Please try again later.',
-      allowedIPs: []
-    };
-
+    // Get maintenance settings from database
+    const settings = await Settings.getByCategory('general');
+    
     res.json({
       success: true,
-      data: maintenanceMode
+      data: {
+        enabled: settings?.maintenanceMode || false,
+        message: settings?.maintenanceMessage || 'System is under maintenance. Please try again later.',
+        estimatedDowntime: settings?.estimatedDowntime || null
+      }
     });
   } catch (error) {
     console.error('Get maintenance mode error:', error);
@@ -355,21 +351,30 @@ const getMaintenanceMode = async (req, res) => {
 // Toggle maintenance mode
 const toggleMaintenanceMode = async (req, res) => {
   try {
-    const { enabled, message, allowedIPs } = req.body;
+    const { enabled, message, estimatedDowntime } = req.body;
     
-    const settings = await loadSettingsFromFile();
-    settings.maintenance = {
-      enabled: Boolean(enabled),
-      message: message || 'System is under maintenance. Please try again later.',
-      allowedIPs: allowedIPs || []
+    // Get current general settings
+    const currentSettings = await Settings.getByCategory('general') || {};
+    
+    // Update maintenance mode settings
+    const updatedSettings = {
+      ...currentSettings,
+      maintenanceMode: enabled,
+      maintenanceMessage: message || 'System is under maintenance. Please try again later.',
+      estimatedDowntime: estimatedDowntime || null
     };
-
-    await saveSettingsToFile(settings);
-
+    
+    // Save updated settings
+    await Settings.updateByCategory('general', updatedSettings, req.user?.id);
+    
     res.json({
       success: true,
       message: `Maintenance mode ${enabled ? 'enabled' : 'disabled'}`,
-      data: settings.maintenance
+      data: {
+        enabled,
+        message: updatedSettings.maintenanceMessage,
+        estimatedDowntime: updatedSettings.estimatedDowntime
+      }
     });
   } catch (error) {
     console.error('Toggle maintenance mode error:', error);
@@ -381,31 +386,9 @@ const toggleMaintenanceMode = async (req, res) => {
 };
 
 // Helper functions
-const loadSettingsFromFile = async () => {
-  try {
-    const settingsPath = path.join(__dirname, '../config/settings.json');
-    const data = await fs.readFile(settingsPath, 'utf8');
-    return JSON.parse(data);
-  } catch (error) {
-    // If file doesn't exist, return default settings
-    return systemSettings;
-  }
-};
-
-const saveSettingsToFile = async (settings) => {
-  try {
-    const settingsPath = path.join(__dirname, '../config/settings.json');
-    const configDir = path.dirname(settingsPath);
-    
-    // Ensure config directory exists
-    await fs.mkdir(configDir, { recursive: true });
-    
-    await fs.writeFile(settingsPath, JSON.stringify(settings, null, 2));
-  } catch (error) {
-    console.error('Error saving settings:', error);
-    throw error;
-  }
-};
+// Remove the old file-based functions as they're no longer needed
+// const loadSettingsFromFile = async () => { ... }
+// const saveSettingsToFile = async (settings) => { ... }
 
 const calculateTotalRevenue = async () => {
   try {
