@@ -115,8 +115,8 @@ const EnrollmentManagement: React.FC = () => {
         ...(statusFilter !== 'all' && { status: statusFilter }),
         ...(courseFilter !== 'all' && { courseId: courseFilter })
       });
-      setEnrollments(response.data.enrollments);
-      setPagination(response.data.pagination);
+      setEnrollments(response.data.data.enrollments);
+      setPagination(response.data.data.pagination);
     } catch (error: any) {
       console.error('Fetch enrollments error:', error);
       toast.error('Failed to fetch enrollments');
@@ -128,7 +128,7 @@ const EnrollmentManagement: React.FC = () => {
   const fetchCourses = async () => {
     try {
       const response = await apiClient.get('/admin/courses?limit=100');
-      setCourses(response.data.courses);
+      setCourses(response.data.data.courses);
     } catch (error) {
       console.error('Fetch courses error:', error);
     }
