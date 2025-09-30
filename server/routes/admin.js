@@ -16,7 +16,11 @@ const {
   toggleUserStatus,
   bulkUpdateUsers,
   getUserStats,
-  approveInstructor
+  approveInstructor,
+  getAllEnrollments,
+  getCourseEnrollments,
+  updateEnrollmentStatus,
+  getStudentEnrollments
 } = require('../controllers/adminController');
 
 const {
@@ -223,5 +227,11 @@ router.post('/system/backup', rateLimiters.general, backupSystem);
 router.post('/system/test-email', rateLimiters.general, testEmailConfig);
 router.get('/system/maintenance', rateLimiters.general, getMaintenanceMode);
 router.post('/system/maintenance', rateLimiters.general, toggleMaintenanceMode);
+
+// ========== ENROLLMENT MANAGEMENT ROUTES ==========
+router.get('/enrollments', rateLimiters.general, getAllEnrollments);
+router.get('/enrollments/course/:courseId', rateLimiters.general, getCourseEnrollments);
+router.put('/enrollments/:enrollmentId/status', rateLimiters.general, updateEnrollmentStatus);
+router.get('/enrollments/student/:studentId', rateLimiters.general, getStudentEnrollments);
 
 module.exports = router;

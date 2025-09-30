@@ -1,5 +1,28 @@
 // src/lib/api.ts
-const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:3001/api';
+
+// Environment-aware API configuration
+const getApiBaseUrl = (): string => {
+  // Production environment variable takes priority
+  if (import.meta.env.VITE_API_URL) {
+    return import.meta.env.VITE_API_URL;
+  }
+  
+  // Auto-detect based on current host in production
+  if (import.meta.env.PROD) {
+    const protocol = window.location.protocol;
+    const hostname = window.location.hostname;
+    
+    // If running on a custom domain, use the same domain for API
+    if (hostname !== 'localhost' && hostname !== '127.0.0.1') {
+      return `${protocol}//${hostname}/api`;
+    }
+  }
+  
+  // Development fallback
+  return 'http://localhost:3001/api';
+};
+
+const API_BASE_URL = getApiBaseUrl();
 
 class ApiClient {
   private baseURL: string;
@@ -1101,6 +1124,43 @@ async downloadCourseMaterial(materialId: string) {
     });
   }
 
+  // ========== ADMIN ENROLLMENT MANAGEMENT ==========
+  async getAdminEnrollments(params?: {
+    page?: number;
+    limit?: number;
+    search?: string;
+    status?: string;
+    courseId?: string;
+    sortBy?: string;
+    sortOrder?: 'asc' | 'desc';
+  }) {
+    const queryParams = new URLSearchParams();
+    if (params) {
+      Object.entries(params).forEach(([key, value]) => {
+        if (value !== undefined) {
+          queryParams.append(key, value.toString());
+        }
+      });
+    }
+    
+    return this.request(`/admin/enrollments${queryParams.toString() ? `?${queryParams.toString()}` : ''}`);
+  }
+
+  async getCourseEnrollments(courseId: string) {
+    return this.request(`/admin/enrollments/course/${courseId}`);
+  }
+
+  async updateEnrollmentStatus(enrollmentId: string, status: string, reason?: string) {
+    return this.request(`/admin/enrollments/${enrollmentId}/status`, {
+      method: 'PUT',
+      body: JSON.stringify({ status, reason }),
+    });
+  }
+
+  async getStudentEnrollments(studentId: string) {
+    return this.request(`/admin/enrollments/student/${studentId}`);
+  }
+
   // ========== ENROLLMENT METHODS ==========
   async enrollInCourse(courseId: string) {
     return this.request(`/enrollments/${courseId}`, {
@@ -1269,6 +1329,39 @@ async downloadCourseMaterial(materialId: string) {
 
   async getPublicTeamMembers() {
     return this.request('/team');
+  }
+
+  // ========== BASIC HTTP METHODS ==========
+  async get<T = any>(endpoint: string, params?: Record<string, any>): Promise<T> {
+    let url = endpoint;
+    if (params) {
+      const searchParams = new URLSearchParams();
+      Object.keys(params).forEach(key => {
+        if (params[key] !== undefined && params[key] !== null) {
+          searchParams.append(key, params[key].toString());
+        }
+      });
+      url += `?${searchParams.toString()}`;
+    }
+    return this.request<T>(url, { method: 'GET' });
+  }
+
+  async post<T = any>(endpoint: string, data?: any): Promise<T> {
+    return this.request<T>(endpoint, {
+      method: 'POST',
+      body: data ? JSON.stringify(data) : undefined,
+    });
+  }
+
+  async put<T = any>(endpoint: string, data?: any): Promise<T> {
+    return this.request<T>(endpoint, {
+      method: 'PUT',
+      body: data ? JSON.stringify(data) : undefined,
+    });
+  }
+
+  async delete<T = any>(endpoint: string): Promise<T> {
+    return this.request<T>(endpoint, { method: 'DELETE' });
   }
 
   // ========== UTILITY METHODS ==========

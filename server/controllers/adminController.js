@@ -2,6 +2,7 @@
 const User = require('../models/User');
 const Student = require('../models/Student');
 const Instructor = require('../models/Instructor');
+const Course = require('../models/Course');
 const emailService = require('../utils/emailService');
 
 // Get all users with filtering and pagination
@@ -535,6 +536,430 @@ const approveInstructor = async (req, res) => {
   }
 };
 
+// ========== ENROLLMENT MANAGEMENT FUNCTIONS ==========
+
+// Get all enrollments across all courses
+const getAllEnrollments = async (req, res) => {
+  try {
+    const { 
+      page = 1, 
+      limit = 10, 
+      search, 
+      status, 
+      courseId,
+      sortBy = 'enrolledAt', 
+      sortOrder = 'desc' 
+    } = req.query;
+
+    // Build aggregation pipeline
+    const pipeline = [
+      { $unwind: '$enrolledCourses' },
+      {
+        $lookup: {
+          from: 'users',
+          localField: 'user',
+          foreignField: '_id',
+          as: 'userInfo'
+        }
+      },
+      {
+        $lookup: {
+          from: 'courses',
+          localField: 'enrolledCourses.course',
+          foreignField: '_id',
+          as: 'courseInfo'
+        }
+      },
+      { $unwind: '$userInfo' },
+      { $unwind: '$courseInfo' }
+    ];
+
+    // Add filters
+    const matchConditions = {};
+    
+    if (search) {
+      matchConditions.$or = [
+        { 'userInfo.firstName': { $regex: search, $options: 'i' } },
+        { 'userInfo.lastName': { $regex: search, $options: 'i' } },
+        { 'userInfo.email': { $regex: search, $options: 'i' } },
+        { 'courseInfo.name': { $regex: search, $options: 'i' } }
+      ];
+    }
+    
+    if (status && status !== 'all') {
+      matchConditions['enrolledCourses.status'] = status;
+    }
+    
+    if (courseId) {
+      matchConditions['enrolledCourses.course'] = courseId;
+    }
+
+    if (Object.keys(matchConditions).length > 0) {
+      pipeline.push({ $match: matchConditions });
+    }
+
+    // Add projection
+    pipeline.push({
+      $project: {
+        _id: '$enrolledCourses._id',
+        student: {
+          _id: '$_id',
+          user: {
+            _id: '$userInfo._id',
+            firstName: '$userInfo.firstName',
+            lastName: '$userInfo.lastName',
+            email: '$userInfo.email',
+            phone: '$userInfo.phone'
+          }
+        },
+        course: {
+          _id: '$courseInfo._id',
+          name: '$courseInfo.name',
+          description: '$courseInfo.description',
+          fees: '$courseInfo.fees'
+        },
+        enrolledAt: '$enrolledCourses.enrolledAt',
+        status: '$enrolledCourses.status',
+        progress: '$enrolledCourses.progress',
+        completedSubjects: '$enrolledCourses.completedSubjects'
+      }
+    });
+
+    // Add sorting
+    const sort = {};
+    sort[sortBy] = sortOrder === 'desc' ? -1 : 1;
+    pipeline.push({ $sort: sort });
+
+    // Execute aggregation with pagination
+    const enrollments = await Student.aggregate([
+      ...pipeline,
+      { $skip: (page - 1) * limit },
+      { $limit: parseInt(limit) }
+    ]);
+
+    // Get total count
+    const totalPipeline = [
+      ...pipeline.slice(0, -1), // Remove sort and pagination
+      { $count: 'total' }
+    ];
+    const totalResult = await Student.aggregate(totalPipeline);
+    const total = totalResult[0]?.total || 0;
+
+    res.json({
+      success: true,
+      data: {
+        enrollments,
+        pagination: {
+          current: parseInt(page),
+          pages: Math.ceil(total / limit),
+          total,
+          limit: parseInt(limit)
+        }
+      }
+    });
+  } catch (error) {
+    console.error('Get all enrollments error:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Failed to get enrollments'
+    });
+  }
+};
+
+// Get enrollments for a specific course
+const getCourseEnrollments = async (req, res) => {
+  try {
+    const { courseId } = req.params;
+    const { page = 1, limit = 10, status, search } = req.query;
+
+    // Check if course exists
+    const course = await Course.findById(courseId);
+    if (!course) {
+      return res.status(404).json({
+        success: false,
+        message: 'Course not found'
+      });
+    }
+
+    // Build query
+    const query = { 'enrolledCourses.course': courseId };
+    
+    if (status && status !== 'all') {
+      query['enrolledCourses.status'] = status;
+    }
+
+    // Build aggregation pipeline
+    const pipeline = [
+      { $match: query },
+      { $unwind: '$enrolledCourses' },
+      { $match: { 'enrolledCourses.course': courseId } },
+      {
+        $lookup: {
+          from: 'users',
+          localField: 'user',
+          foreignField: '_id',
+          as: 'userInfo'
+        }
+      },
+      { $unwind: '$userInfo' }
+    ];
+
+    // Add search filter
+    if (search) {
+      pipeline.push({
+        $match: {
+          $or: [
+            { 'userInfo.firstName': { $regex: search, $options: 'i' } },
+            { 'userInfo.lastName': { $regex: search, $options: 'i' } },
+            { 'userInfo.email': { $regex: search, $options: 'i' } }
+          ]
+        }
+      });
+    }
+
+    // Add status filter after unwind
+    if (status && status !== 'all') {
+      pipeline.push({ $match: { 'enrolledCourses.status': status } });
+    }
+
+    // Add projection
+    pipeline.push({
+      $project: {
+        _id: '$enrolledCourses._id',
+        student: {
+          _id: '$_id',
+          user: {
+            _id: '$userInfo._id',
+            firstName: '$userInfo.firstName',
+            lastName: '$userInfo.lastName',
+            email: '$userInfo.email',
+            phone: '$userInfo.phone'
+          }
+        },
+        enrolledAt: '$enrolledCourses.enrolledAt',
+        status: '$enrolledCourses.status',
+        progress: '$enrolledCourses.progress',
+        completedSubjects: '$enrolledCourses.completedSubjects'
+      }
+    });
+
+    // Execute with pagination
+    const enrollments = await Student.aggregate([
+      ...pipeline,
+      { $sort: { enrolledAt: -1 } },
+      { $skip: (page - 1) * limit },
+      { $limit: parseInt(limit) }
+    ]);
+
+    // Get total count
+    const totalResult = await Student.aggregate([
+      ...pipeline,
+      { $count: 'total' }
+    ]);
+    const total = totalResult[0]?.total || 0;
+
+    res.json({
+      success: true,
+      data: {
+        course: {
+          _id: course._id,
+          name: course.name,
+          description: course.description
+        },
+        enrollments,
+        pagination: {
+          current: parseInt(page),
+          pages: Math.ceil(total / limit),
+          total,
+          limit: parseInt(limit)
+        }
+      }
+    });
+  } catch (error) {
+    console.error('Get course enrollments error:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Failed to get course enrollments'
+    });
+  }
+};
+
+// Update enrollment status
+const updateEnrollmentStatus = async (req, res) => {
+  try {
+    const { enrollmentId } = req.params;
+    const { status, reason } = req.body;
+
+    // Validate status
+    const validStatuses = ['active', 'completed', 'suspended', 'dropped'];
+    if (!validStatuses.includes(status)) {
+      return res.status(400).json({
+        success: false,
+        message: 'Invalid status. Must be one of: active, completed, suspended, dropped'
+      });
+    }
+
+    // Find the student with this enrollment
+    const student = await Student.findOne({
+      'enrolledCourses._id': enrollmentId
+    }).populate('user', 'firstName lastName email');
+
+    if (!student) {
+      return res.status(404).json({
+        success: false,
+        message: 'Enrollment not found'
+      });
+    }
+
+    // Find the specific enrollment
+    const enrollment = student.enrolledCourses.id(enrollmentId);
+    if (!enrollment) {
+      return res.status(404).json({
+        success: false,
+        message: 'Enrollment not found'
+      });
+    }
+
+    const oldStatus = enrollment.status;
+
+    // Business logic validation
+    if (oldStatus === 'completed' && status !== 'completed') {
+      return res.status(400).json({
+        success: false,
+        message: 'Cannot change status of completed enrollment'
+      });
+    }
+
+    if (oldStatus === 'dropped' && status === 'active') {
+      return res.status(400).json({
+        success: false,
+        message: 'Cannot reactivate dropped enrollment. Student must re-enroll.'
+      });
+    }
+
+    // Update the enrollment status
+    enrollment.status = status;
+    
+    // Set completion date if status is completed
+    if (status === 'completed' && oldStatus !== 'completed') {
+      enrollment.completedAt = new Date();
+      enrollment.progress = 100;
+    }
+
+    // Add status change log
+    if (!enrollment.statusHistory) {
+      enrollment.statusHistory = [];
+    }
+    
+    enrollment.statusHistory.push({
+      status: status,
+      changedAt: new Date(),
+      changedBy: req.user._id,
+      reason: reason || 'Status changed by admin'
+    });
+
+    await student.save();
+
+    // Get course info for notification
+    const course = await Course.findById(enrollment.course);
+
+    // Send notification email to student
+    try {
+      const statusMessages = {
+        active: 'Your enrollment has been activated',
+        completed: 'Congratulations! You have completed the course',
+        suspended: 'Your enrollment has been temporarily suspended',
+        dropped: 'Your enrollment has been withdrawn'
+      };
+
+      await emailService.sendEmail({
+        to: student.user.email,
+        subject: `Enrollment Status Update - ${course?.name || 'Course'}`,
+        html: `
+          <h2>Enrollment Status Update</h2>
+          <p>Dear ${student.user.firstName} ${student.user.lastName},</p>
+          <p>${statusMessages[status]} for the course: <strong>${course?.name || 'Course'}</strong></p>
+          ${reason ? `<p><strong>Reason:</strong> ${reason}</p>` : ''}
+          <p>If you have any questions, please contact our support team.</p>
+          <p>Best regards,<br>SSM Technologies Institute</p>
+        `
+      });
+    } catch (emailError) {
+      console.error('Failed to send enrollment status email:', emailError);
+      // Don't fail the request if email fails
+    }
+
+    res.json({
+      success: true,
+      message: 'Enrollment status updated successfully',
+      data: {
+        enrollmentId,
+        oldStatus,
+        newStatus: status,
+        student: {
+          name: `${student.user.firstName} ${student.user.lastName}`,
+          email: student.user.email
+        },
+        course: course ? { name: course.name } : null
+      }
+    });
+  } catch (error) {
+    console.error('Update enrollment status error:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Failed to update enrollment status'
+    });
+  }
+};
+
+// Get enrollments for a specific student
+const getStudentEnrollments = async (req, res) => {
+  try {
+    const { studentId } = req.params;
+
+    const student = await Student.findById(studentId)
+      .populate('user', 'firstName lastName email phone')
+      .populate('enrolledCourses.course', 'name description fees duration')
+      .lean();
+
+    if (!student) {
+      return res.status(404).json({
+        success: false,
+        message: 'Student not found'
+      });
+    }
+
+    // Format the response
+    const enrollments = student.enrolledCourses.map(enrollment => ({
+      _id: enrollment._id,
+      course: enrollment.course,
+      enrolledAt: enrollment.enrolledAt,
+      status: enrollment.status,
+      progress: enrollment.progress,
+      completedSubjects: enrollment.completedSubjects,
+      completedAt: enrollment.completedAt,
+      statusHistory: enrollment.statusHistory || []
+    }));
+
+    res.json({
+      success: true,
+      data: {
+        student: {
+          _id: student._id,
+          user: student.user
+        },
+        enrollments
+      }
+    });
+  } catch (error) {
+    console.error('Get student enrollments error:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Failed to get student enrollments'
+    });
+  }
+};
+
 module.exports = {
   getUsers,
   getUser,
@@ -544,5 +969,10 @@ module.exports = {
   toggleUserStatus,
   bulkUpdateUsers,
   getUserStats,
-  approveInstructor
+  approveInstructor,
+  // Enrollment management functions
+  getAllEnrollments,
+  getCourseEnrollments,
+  updateEnrollmentStatus,
+  getStudentEnrollments
 };

@@ -10,10 +10,15 @@
     "seed": "cd server && node scripts/seedDatabase.js",
     "setup": "npm run seed && npm run dev:server & npm run dev",
     "build": "vite build",
+    "build:prod": "vite build --mode production",
+    "build:staging": "vite build --mode staging",
     "lint": "eslint .",
     "preview": "vite preview",
+    "preview:prod": "vite preview --mode production",
     "install:all": "npm install && cd server && npm install",
-    "start:production": "npm run build && cd server && npm start"
+    "start:production": "npm run build:prod && cd server && npm start",
+    "deploy:build": "npm run lint && npm run build:prod",
+    "deploy:full": "npm run install:all && npm run deploy:build"
   },
   "dependencies": {
     "@supabase/supabase-js": "^2.57.4",

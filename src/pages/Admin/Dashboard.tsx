@@ -191,6 +191,14 @@ const AdminDashboard: React.FC = () => {
       count: dashboardData.stats.activeBatches
     },
     {
+      title: 'Enrollment Management',
+      description: 'Manage student enrollment status',
+      icon: <BookOpen className="w-6 h-6" />,
+      href: '/admin/enrollments',
+      color: 'bg-teal-50 text-teal-600',
+      count: dashboardData.stats.totalEnrollments
+    },
+    {
       title: 'Messages & Support',
       description: 'Handle student inquiries and support',
       icon: <MessageSquare className="w-6 h-6" />,

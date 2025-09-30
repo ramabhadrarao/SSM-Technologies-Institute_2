@@ -30,7 +30,24 @@ const studentSchema = new mongoose.Schema({
       type: String,
       enum: ['active', 'completed', 'suspended', 'dropped'],
       default: 'active'
-    }
+    },
+    completedAt: Date,
+    statusHistory: [{
+      status: {
+        type: String,
+        enum: ['active', 'completed', 'suspended', 'dropped'],
+        required: true
+      },
+      changedAt: {
+        type: Date,
+        default: Date.now
+      },
+      changedBy: {
+        type: mongoose.Schema.Types.ObjectId,
+        ref: 'User'
+      },
+      reason: String
+    }]
   }],
   batches: [{
     type: mongoose.Schema.Types.ObjectId,

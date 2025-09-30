@@ -30,6 +30,7 @@ import AdminMessagesManagement from './pages/Admin/MessagesManagement';
 import AdminReportsAnalytics from './pages/Admin/ReportsAnalytics';
 import AdminSystemSettings from './pages/Admin/SystemSettings';
 import AdminTeamManagement from './pages/Admin/TeamManagement';
+import AdminEnrollmentManagement from './pages/Admin/EnrollmentManagement';
 import StudentDashboard from './pages/Student/Dashboard';
 import InstructorDashboard from './pages/Instructor/Dashboard';
 import InstructorProfile from './pages/Instructor/Profile';
@@ -66,6 +67,7 @@ function App() {
                 <Route path="/admin/subjects" element={<AdminSubjectsManagement />} />
                 <Route path="/admin/batches" element={<AdminBatchesManagement />} />
                 <Route path="/admin/team" element={<AdminTeamManagement />} />
+                <Route path="/admin/enrollments" element={<AdminEnrollmentManagement />} />
                 <Route path="/admin/messages" element={<AdminMessagesManagement />} />
                 <Route path="/admin/reports" element={<AdminReportsAnalytics />} />
                 <Route path="/admin/settings" element={<AdminSystemSettings />} />
