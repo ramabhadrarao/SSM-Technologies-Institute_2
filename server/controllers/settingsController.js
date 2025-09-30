@@ -5,74 +5,8 @@ const Settings = require('../models/Settings');
 const fs = require('fs').promises;
 const path = require('path');
 
-// Simple settings store (in production, use a dedicated Settings model)
-let systemSettings = {
-  general: {
-    siteName: 'SSM Technologies',
-    siteDescription: 'Leading Coaching Institute for Technology Education',
-    contactEmail: 'info@ssmtechnologies.co.in',
-    contactPhone: '+91 98765 43210',
-    address: '123 Education Street, Knowledge City, Chennai, Tamil Nadu 600001',
-    timezone: 'Asia/Kolkata',
-    language: 'en',
-    currency: 'INR'
-  },
-  email: {
-    smtpHost: '',
-    smtpPort: 587,
-    smtpUser: '',
-    smtpPassword: '',
-    fromEmail: 'noreply@ssmtechnologies.co.in',
-    fromName: 'SSM Technologies'
-  },
-  payments: {
-    enableOnlinePayments: true,
-    paymentGateway: 'razorpay',
-    razorpayKeyId: '',
-    razorpayKeySecret: '',
-    enableInstallments: true,
-    maxInstallments: 6
-  },
-  courses: {
-    defaultCourseDuration: '3 months',
-    allowSelfEnrollment: true,
-    requireApprovalForEnrollment: false,
-    maxStudentsPerBatch: 30,
-    enableCourseReviews: true,
-    enableCourseCertificates: true
-  },
-  notifications: {
-    enableEmailNotifications: true,
-    enableSMSNotifications: false,
-    enablePushNotifications: false,
-    notifyOnEnrollment: true,
-    notifyOnClassSchedule: true,
-    notifyOnAssignmentDue: true
-  },
-  security: {
-    enableTwoFactorAuth: false,
-    sessionTimeout: 3600, // seconds
-    maxLoginAttempts: 5,
-    lockoutDuration: 900, // seconds
-    passwordMinLength: 6,
-    requirePasswordChange: false,
-    passwordChangeInterval: 90 // days
-  },
-  uploads: {
-    maxFileSize: 10485760, // 10MB in bytes
-    allowedImageTypes: ['jpg', 'jpeg', 'png', 'gif'],
-    allowedDocumentTypes: ['pdf', 'doc', 'docx', 'txt'],
-    allowedVideoTypes: ['mp4', 'avi', 'mov', 'wmv'],
-    enableCloudStorage: false,
-    cloudProvider: 'aws'
-  },
-  backup: {
-    enableAutoBackup: false,
-    backupFrequency: 'daily',
-    backupRetention: 30, // days
-    backupLocation: 'local'
-  }
-};
+// Default settings are now managed by the Settings model
+// No need for hardcoded systemSettings object
 
 // Get all system settings
 const getSystemSettings = async (req, res) => {
@@ -92,7 +26,7 @@ const getSystemSettings = async (req, res) => {
     res.status(500).json({
       success: false,
       message: 'Failed to get system settings',
-      data: systemSettings // Fallback to default settings
+      data: {} // Return empty object on error
     });
   }
 };
