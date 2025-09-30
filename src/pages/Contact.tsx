@@ -5,9 +5,11 @@ import { apiClient } from '../lib/api';
 import Card from '../components/UI/Card';
 import Button from '../components/UI/Button';
 import AlternativeCaptcha, { AlternativeCaptchaRef } from '../components/UI/AlternativeCaptcha';
+import { useSettings } from '../hooks/useSettings';
 import toast from 'react-hot-toast';
 
 const Contact: React.FC = () => {
+  const { generalSettings, loading: settingsLoading } = useSettings();
   const [formData, setFormData] = useState({
     name: '',
     email: '',
@@ -267,9 +269,22 @@ const Contact: React.FC = () => {
                   <div className="ml-4">
                     <h3 className="text-sm font-semibold text-gray-900">Address</h3>
                     <p className="mt-1 text-sm text-gray-600">
-                      123 Education Street<br />
-                      Knowledge City, KC 12345<br />
-                      India
+                      {settingsLoading ? (
+                        <span className="animate-pulse">Loading address...</span>
+                      ) : (
+                        generalSettings?.address?.split(', ').map((line, index, array) => (
+                          <React.Fragment key={index}>
+                            {line}
+                            {index < array.length - 1 && <br />}
+                          </React.Fragment>
+                        )) || (
+                          <>
+                            123 Education Street<br />
+                            Knowledge City, KC 12345<br />
+                            India
+                          </>
+                        )
+                      )}
                     </p>
                   </div>
                 </div>
@@ -280,7 +295,13 @@ const Contact: React.FC = () => {
                   </div>
                   <div className="ml-4">
                     <h3 className="text-sm font-semibold text-gray-900">Phone</h3>
-                    <p className="mt-1 text-sm text-gray-600">+91 98765 43210</p>
+                    <p className="mt-1 text-sm text-gray-600">
+                      {settingsLoading ? (
+                        <span className="animate-pulse">Loading phone...</span>
+                      ) : (
+                        generalSettings?.contactPhone || "+91 98765 43210"
+                      )}
+                    </p>
                   </div>
                 </div>
 
@@ -290,7 +311,13 @@ const Contact: React.FC = () => {
                   </div>
                   <div className="ml-4">
                     <h3 className="text-sm font-semibold text-gray-900">Email</h3>
-                    <p className="mt-1 text-sm text-gray-600">info@ssmtechnologies.co.in</p>
+                    <p className="mt-1 text-sm text-gray-600">
+                      {settingsLoading ? (
+                        <span className="animate-pulse">Loading email...</span>
+                      ) : (
+                        generalSettings?.contactEmail || "info@ssmtechnologies.co.in"
+                      )}
+                    </p>
                   </div>
                 </div>
 
@@ -433,16 +460,17 @@ const Contact: React.FC = () => {
                     Phone Number <span className="text-red-500">*</span>
                   </label>
                   <input
-                    type="tel"
-                    id="phone"
-                    name="phone"
-                    value={formData.phone}
-                    onChange={handleInputChange}
-                    className={`w-full px-4 py-3 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent ${
-                      errors.phone ? 'border-red-500' : 'border-gray-300'
-                    }`}
-                    placeholder="+91 98765 43210"
-                  />
+                      type="tel"
+                      id="phone"
+                      name="phone"
+                      value={formData.phone}
+                      onChange={handleInputChange}
+                      className={`w-full px-4 py-3 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent ${
+                        errors.phone ? 'border-red-500' : 'border-gray-300'
+                      }`}
+                      placeholder={generalSettings?.contactPhone || "+91 98765 43210"}
+                      maxLength={20}
+                    />
                   {errors.phone && (
                     <p className="mt-1 text-sm text-red-600 flex items-center">
                       <AlertCircle className="w-4 h-4 mr-1" />
