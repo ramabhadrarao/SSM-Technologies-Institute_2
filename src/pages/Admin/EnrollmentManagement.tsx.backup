@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect } from 'react';
 import { toast } from 'react-hot-toast';
 import { 
   Users, 
@@ -105,7 +105,7 @@ const EnrollmentManagement: React.FC = () => {
     return statusOptions.find(option => option.value === status) || statusOptions[0];
   };
 
-  const fetchEnrollments = useCallback(async (page = 1) => {
+  const fetchEnrollments = async (page = 1) => {
     try {
       setLoading(true);
       
@@ -119,59 +119,41 @@ const EnrollmentManagement: React.FC = () => {
 
       console.log('Enrollments response:', response); // Debug log
 
-      let enrollmentsData = [];
-      let paginationData = {
-        current: page,
-        pages: 1,
-        total: 0,
-        limit: 10
-      };
-
-      // Handle API response structure: { success: true, data: { enrollments: [...], pagination: {...} } }
-      if (response && response.success && response.data) {
-        enrollmentsData = response.data.enrollments || [];
-        paginationData = response.data.pagination || paginationData;
-      } else if (response && response.data && response.data.enrollments) {
-        enrollmentsData = response.data.enrollments || [];
-        paginationData = response.data.pagination || paginationData;
-      } else if (response && response.enrollments) {
-        enrollmentsData = response.enrollments || [];
-        paginationData = response.pagination || paginationData;
-      } else if (Array.isArray(response)) {
-        enrollmentsData = response;
-        paginationData = {
+      // Fix: The response structure has nested data property
+      if (response && response.data && response.data.data) {
+        setEnrollments(response.data.data.enrollments || []);
+        setPagination(response.data.data.pagination || {
           current: page,
           pages: 1,
-          total: response.length,
+          total: 0,
           limit: 10
+        });
+
+        // Calculate stats from enrollments
+        const enrollmentStats = {
+          active: 0,
+          completed: 0,
+          suspended: 0,
+          dropped: 0
         };
+
+        (response.data.data.enrollments || []).forEach((enrollment: Enrollment) => {
+          if (enrollment.status in enrollmentStats) {
+            enrollmentStats[enrollment.status as keyof typeof enrollmentStats]++;
+          }
+        });
+
+        setStats(enrollmentStats);
       } else {
-        console.warn('Unexpected response structure:', response);
-        enrollmentsData = [];
+        // Handle case where response structure is different
+        setEnrollments([]);
+        setPagination({
+          current: 1,
+          pages: 1,
+          total: 0,
+          limit: 10
+        });
       }
-
-      console.log('Processed enrollments data:', enrollmentsData); // Debug log
-
-      setEnrollments(enrollmentsData);
-      setPagination(paginationData);
-
-      // Calculate statistics from the enrollments data
-      const enrollmentStats = {
-        active: 0,
-        completed: 0,
-        suspended: 0,
-        dropped: 0
-      };
-
-      enrollmentsData.forEach((enrollment: Enrollment) => {
-        if (enrollment && enrollment.status && enrollment.status in enrollmentStats) {
-          enrollmentStats[enrollment.status as keyof typeof enrollmentStats]++;
-        }
-      });
-
-      console.log('Calculated stats:', enrollmentStats); // Debug log
-      setStats(enrollmentStats);
-
     } catch (error: any) {
       console.error('Fetch enrollments error:', error);
       toast.error(error.message || 'Failed to fetch enrollments');
@@ -182,18 +164,12 @@ const EnrollmentManagement: React.FC = () => {
         total: 0,
         limit: 10
       });
-      setStats({
-        active: 0,
-        completed: 0,
-        suspended: 0,
-        dropped: 0
-      });
     } finally {
       setLoading(false);
     }
-  }, [search, statusFilter, courseFilter, pagination.limit]);
+  };
 
-  const fetchCourses = useCallback(async () => {
+  const fetchCourses = async () => {
     try {
       const response = await apiClient.getAdminCourses({ limit: 100 });
       console.log('Courses response:', response); // Debug log
@@ -210,7 +186,7 @@ const EnrollmentManagement: React.FC = () => {
       toast.error('Failed to fetch courses');
       setCourses([]);
     }
-  }, []);
+  };
 
   const handleStatusChange = async () => {
     if (!selectedEnrollment || !newStatus) return;
