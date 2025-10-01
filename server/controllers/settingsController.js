@@ -224,37 +224,86 @@ const testEmailConfig = async (req, res) => {
       });
     }
 
-    // Get email settings from database
-    const emailSettings = await Settings.getByCategory('email');
+    // Import EmailService
+    const emailService = require('../utils/emailService');
 
-    // Here you would implement actual email sending
-    // For now, just simulate the test
-    if (!emailSettings || !emailSettings.smtpHost || !emailSettings.smtpUser) {
-      return res.status(400).json({
-        success: false,
-        message: 'Email configuration is incomplete'
-      });
-    }
+    // Send test email
+    const subject = 'Test Email - SSM Technologies Institute';
+    const html = `
+      <!DOCTYPE html>
+      <html>
+      <head>
+        <meta charset="utf-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1.0">
+        <title>Test Email</title>
+      </head>
+      <body style="font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; line-height: 1.6; color: #333; margin: 0; padding: 0; background-color: #f4f4f4;">
+        <div style="max-width: 600px; margin: 20px auto; background-color: #ffffff; border-radius: 10px; overflow: hidden; box-shadow: 0 0 20px rgba(0,0,0,0.1);">
+          <!-- Header -->
+          <div style="background: linear-gradient(135deg, #3b82f6 0%, #06b6d4 100%); color: white; padding: 40px 20px; text-align: center;">
+            <h1 style="margin: 0; font-size: 28px; font-weight: bold;">✅ Test Email Successful!</h1>
+            <p style="margin: 10px 0 0 0; font-size: 16px; opacity: 0.9;">SSM Technologies Institute</p>
+          </div>
+          
+          <!-- Body -->
+          <div style="padding: 40px 30px;">
+            <h2 style="color: #3b82f6; margin-top: 0;">Email Configuration Working! 🎉</h2>
+            
+            <p style="font-size: 16px; line-height: 1.8;">
+              Congratulations! Your email configuration is working correctly. This test email confirms that:
+            </p>
+            
+            <ul style="font-size: 16px; line-height: 1.8; padding-left: 20px;">
+              <li>✅ SMTP settings are configured properly</li>
+              <li>✅ Email authentication is working</li>
+              <li>✅ Email delivery is functional</li>
+              <li>✅ HTML email formatting is supported</li>
+            </ul>
+            
+            <div style="background-color: #f0f9ff; border-left: 4px solid #3b82f6; padding: 20px; margin: 30px 0; border-radius: 4px;">
+              <p style="margin: 0; font-size: 15px; line-height: 1.8;">
+                <strong>Test Details:</strong><br>
+                📧 Sent to: ${testEmail}<br>
+                🕒 Time: ${new Date().toLocaleString()}<br>
+                🌐 From: SSM Technologies Institute Email System
+              </p>
+            </div>
+            
+            <p style="font-size: 16px; line-height: 1.8;">
+              Your email system is now ready to send welcome emails, password resets, notifications, and other important communications to your users.
+            </p>
+            
+            <p style="margin-top: 30px; font-size: 16px; line-height: 1.8;">
+              Best regards,<br>
+              <strong>The SSM Technologies Team</strong>
+            </p>
+          </div>
+          
+          <!-- Footer -->
+          <div style="background-color: #1e293b; color: #94a3b8; padding: 25px 30px; text-align: center; font-size: 13px;">
+            <p style="margin: 0 0 10px 0;">
+              This is a test email sent from your SSM Technologies Institute system.
+            </p>
+            <p style="margin: 0;">
+              © ${new Date().getFullYear()} SSM Technologies Institute. All rights reserved.
+            </p>
+          </div>
+        </div>
+      </body>
+      </html>
+    `;
 
-    // Simulate email test
-    const isEmailSent = true; // Replace with actual email sending logic
+    await emailService.sendEmail(testEmail, subject, html);
     
-    if (isEmailSent) {
-      res.json({
-        success: true,
-        message: `Test email sent successfully to ${testEmail}`
-      });
-    } else {
-      res.status(500).json({
-        success: false,
-        message: 'Failed to send test email'
-      });
-    }
+    res.json({
+      success: true,
+      message: `Test email sent successfully to ${testEmail}`
+    });
   } catch (error) {
     console.error('Test email config error:', error);
     res.status(500).json({
       success: false,
-      message: 'Failed to test email configuration'
+      message: `Failed to send test email: ${error.message}`
     });
   }
 };

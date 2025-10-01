@@ -29,8 +29,12 @@ database.connect().catch(console.error);
 app.use(securityHeaders);
 
 // CORS configuration
+const corsOrigins = process.env.NODE_ENV === 'production' 
+  ? ['https://www.ssmtechnologies.co.in', 'https://ssmtechnologies.co.in']
+  : [process.env.CORS_ORIGIN || 'http://localhost:5173'];
+
 app.use(cors({
-  origin: process.env.CORS_ORIGIN || 'http://localhost:5173',
+  origin: corsOrigins,
   credentials: true,
   methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS', 'PATCH'],
   allowedHeaders: ['Content-Type', 'Authorization']

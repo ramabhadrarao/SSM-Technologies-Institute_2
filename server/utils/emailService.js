@@ -44,7 +44,7 @@ class EmailService {
   }
 
   async sendWelcomeEmail(userEmail, userName, userType) {
-    const subject = 'Welcome to SSM Technologies Institute';
+    const subject = 'Welcome to SSM Technologies ';
     
     const roleSpecificContent = userType === 'instructor' 
       ? `
@@ -83,7 +83,7 @@ class EmailService {
         <div style="max-width: 600px; margin: 20px auto; background-color: #ffffff; border-radius: 10px; overflow: hidden; box-shadow: 0 0 20px rgba(0,0,0,0.1);">
           <!-- Header -->
           <div style="background: linear-gradient(135deg, #3b82f6 0%, #06b6d4 100%); color: white; padding: 40px 20px; text-align: center;">
-            <h1 style="margin: 0; font-size: 28px; font-weight: bold;">Welcome to SSM Technologies Institute</h1>
+            <h1 style="margin: 0; font-size: 28px; font-weight: bold;">Welcome to SSM Technologies </h1>
             <p style="margin: 10px 0 0 0; font-size: 16px; opacity: 0.9;">Empowering Your Learning Journey</p>
           </div>
           
@@ -92,7 +92,7 @@ class EmailService {
             <h2 style="color: #3b82f6; margin-top: 0;">Hello ${userName}! 👋</h2>
             
             <p style="font-size: 16px; line-height: 1.8;">
-              Thank you for joining SSM Technologies Institute! We're thrilled to have you as part of our learning community.
+              Thank you for joining SSM Technologies ! We're thrilled to have you as part of our learning community.
             </p>
             
             <p style="font-size: 16px; line-height: 1.8;">
@@ -134,7 +134,7 @@ class EmailService {
               This is an automated email. Please do not reply to this message.
             </p>
             <p style="margin: 0;">
-              © ${new Date().getFullYear()} SSM Technologies Institute. All rights reserved.
+              © ${new Date().getFullYear()} SSM Technologies . All rights reserved.
             </p>
           </div>
         </div>
@@ -147,7 +147,7 @@ class EmailService {
 
   async sendPasswordResetEmail(userEmail, userName, resetToken) {
     const resetUrl = `${process.env.FRONTEND_URL}/reset-password?token=${resetToken}`;
-    const subject = 'Password Reset Request - SSM Technologies Institute';
+    const subject = 'Password Reset Request - SSM Technologies ';
     
     const html = `
       <!DOCTYPE html>
@@ -170,7 +170,7 @@ class EmailService {
             <h2 style="color: #dc2626; margin-top: 0;">Hello ${userName}! 👋</h2>
             
             <p style="font-size: 16px; line-height: 1.8;">
-              We received a request to reset the password for your SSM Technologies Institute account.
+              We received a request to reset the password for your SSM Technologies  account.
             </p>
             
             <p style="font-size: 16px; line-height: 1.8;">
@@ -213,7 +213,7 @@ class EmailService {
               For security reasons, this password reset link will expire in 1 hour.
             </p>
             <p style="margin: 10px 0 0 0;">
-              © ${new Date().getFullYear()} SSM Technologies Institute. All rights reserved.
+              © ${new Date().getFullYear()} SSM Technologies . All rights reserved.
             </p>
           </div>
         </div>
@@ -225,7 +225,7 @@ class EmailService {
   }
 
   async sendPasswordResetConfirmation(userEmail, userName) {
-    const subject = 'Password Reset Successful - SSM Technologies Institute';
+    const subject = 'Password Reset Successful - SSM Technologies ';
     
     const html = `
       <!DOCTYPE html>
@@ -248,7 +248,7 @@ class EmailService {
             <h2 style="color: #16a34a; margin-top: 0;">Hello ${userName}! 👋</h2>
             
             <p style="font-size: 16px; line-height: 1.8;">
-              Your password has been successfully reset for your SSM Technologies Institute account.
+              Your password has been successfully reset for your SSM Technologies  account.
             </p>
             
             <p style="font-size: 16px; line-height: 1.8;">
@@ -292,7 +292,7 @@ class EmailService {
               This is an automated email. Please do not reply to this message.
             </p>
             <p style="margin: 0;">
-              © ${new Date().getFullYear()} SSM Technologies Institute. All rights reserved.
+              © ${new Date().getFullYear()} SSM Technologies . All rights reserved.
             </p>
           </div>
         </div>
@@ -304,7 +304,7 @@ class EmailService {
   }
 
   async sendReplyEmail(userEmail, userName, replyMessage, originalSubject) {
-    const subject = `Re: ${originalSubject} - SSM Technologies Institute`;
+    const subject = `Re: ${originalSubject} - SSM Technologies `;
     
     const html = `
       <!DOCTYPE html>
@@ -319,7 +319,7 @@ class EmailService {
           <!-- Header -->
           <div style="background: linear-gradient(135deg, #3b82f6 0%, #06b6d4 100%); color: white; padding: 40px 20px; text-align: center;">
             <h1 style="margin: 0; font-size: 28px; font-weight: bold;">Reply to Your Message</h1>
-            <p style="margin: 10px 0 0 0; font-size: 16px; opacity: 0.9;">SSM Technologies Institute</p>
+            <p style="margin: 10px 0 0 0; font-size: 16px; opacity: 0.9;">SSM Technologies </p>
           </div>
           
           <!-- Body -->
@@ -327,7 +327,7 @@ class EmailService {
             <h2 style="color: #3b82f6; margin-top: 0;">Hello ${userName}! 👋</h2>
             
             <p style="font-size: 16px; line-height: 1.8;">
-              Thank you for contacting SSM Technologies Institute. We have received your message and here is our response:
+              Thank you for contacting SSM Technologies . We have received your message and here is our response:
             </p>
             
             <!-- Reply Message -->
@@ -369,7 +369,7 @@ class EmailService {
               This email was sent in response to your inquiry.
             </p>
             <p style="margin: 0;">
-              © ${new Date().getFullYear()} SSM Technologies Institute. All rights reserved.
+              © ${new Date().getFullYear()} SSM Technologies . All rights reserved.
             </p>
           </div>
         </div>
@@ -382,8 +382,8 @@ class EmailService {
 
   async sendInstructorApprovalEmail(userEmail, userName, approved) {
     const subject = approved 
-      ? 'Instructor Account Approved - SSM Technologies Institute'
-      : 'Instructor Application Update - SSM Technologies Institute';
+      ? 'Instructor Account Approved - SSM Technologies '
+      : 'Instructor Application Update - SSM Technologies ';
     
     const statusColor = approved ? '#16a34a' : '#dc2626';
     const statusGradient = approved 
@@ -433,7 +433,7 @@ class EmailService {
           
           <div style="background-color: #1e293b; color: #94a3b8; padding: 25px 30px; text-align: center; font-size: 13px;">
             <p style="margin: 0;">
-              © ${new Date().getFullYear()} SSM Technologies Institute. All rights reserved.
+              © ${new Date().getFullYear()} SSM Technologies . All rights reserved.
             </p>
           </div>
         </div>
