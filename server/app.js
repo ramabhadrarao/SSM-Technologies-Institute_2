@@ -122,27 +122,101 @@ process.on('SIGINT', async () => {
 });
 
 const PORT = process.env.PORT || 3001;
+const HTTPS_PORT = process.env.HTTPS_PORT || 443;
 
-app.listen(PORT, () => {
-  console.log(`🚀 SSM Technologies API server running on port ${PORT}`);
-  console.log(`📊 Environment: ${process.env.NODE_ENV}`);
-  console.log(`🌐 CORS Origin: ${process.env.CORS_ORIGIN}`);
-  console.log(`📚 Available routes:`);
-  console.log(`   GET  /health - Health check`);
-  console.log(`   POST /api/auth/register - User registration`);
-  console.log(`   POST /api/auth/login - User login`);
-  console.log(`   GET  /api/courses - Get all courses`);
-  console.log(`   GET  /api/subjects - Get all subjects`);
-  console.log(`   GET  /api/dashboard/admin - Admin dashboard`);
-  console.log(`   GET  /api/dashboard/student - Student dashboard`);
-  console.log(`   GET  /api/dashboard/instructor - Instructor dashboard`);
-  console.log(`   GET  /api/admin/users - Admin user management`);
-  console.log(`   GET  /api/admin/courses - Admin course management`);
-  console.log(`   GET  /api/admin/batches - Admin batch management`);
-  console.log(`   GET  /api/admin/messages - Admin message management`);
-  console.log(`   GET  /api/admin/analytics/* - Admin analytics & reports`);
-  console.log(`   GET  /api/admin/settings - Admin system settings`);
-  console.log(`   POST /api/contact - Public contact form`);
-});
+// HTTPS Configuration for production
+if (process.env.NODE_ENV === 'production') {
+  const https = require('https');
+  const fs = require('fs');
+  
+  try {
+    // SSL Certificate paths - update these paths according to your SSL certificate location
+    const sslOptions = {
+      key: fs.readFileSync(process.env.SSL_KEY_PATH || '/etc/ssl/private/server.key'),
+      cert: fs.readFileSync(process.env.SSL_CERT_PATH || '/etc/ssl/certs/server.crt'),
+      // If you have a certificate chain file (intermediate certificates)
+      ...(process.env.SSL_CA_PATH && { ca: fs.readFileSync(process.env.SSL_CA_PATH) })
+    };
+
+    // Create HTTPS server
+    const httpsServer = https.createServer(sslOptions, app);
+    
+    httpsServer.listen(HTTPS_PORT, () => {
+      console.log(`🔒 SSM Technologies HTTPS API server running on port ${HTTPS_PORT}`);
+      console.log(`📊 Environment: ${process.env.NODE_ENV}`);
+      console.log(`🌐 CORS Origin: ${process.env.CORS_ORIGIN}`);
+      console.log(`🔐 SSL/TLS: Enabled`);
+      console.log(`📚 Available routes:`);
+      console.log(`   GET  /health - Health check`);
+      console.log(`   POST /api/auth/register - User registration`);
+      console.log(`   POST /api/auth/login - User login`);
+      console.log(`   GET  /api/courses - Get all courses`);
+      console.log(`   GET  /api/subjects - Get all subjects`);
+      console.log(`   GET  /api/dashboard/admin - Admin dashboard`);
+      console.log(`   GET  /api/dashboard/student - Student dashboard`);
+      console.log(`   GET  /api/dashboard/instructor - Instructor dashboard`);
+      console.log(`   GET  /api/admin/users - Admin user management`);
+      console.log(`   GET  /api/admin/courses - Admin course management`);
+      console.log(`   GET  /api/admin/batches - Admin batch management`);
+      console.log(`   GET  /api/admin/messages - Admin message management`);
+      console.log(`   GET  /api/admin/analytics/* - Admin analytics & reports`);
+      console.log(`   GET  /api/admin/settings - Admin system settings`);
+      console.log(`   POST /api/contact - Public contact form`);
+    });
+
+    // Optional: Redirect HTTP to HTTPS
+    if (process.env.REDIRECT_HTTP_TO_HTTPS === 'true') {
+      const http = require('http');
+      const httpApp = express();
+      
+      httpApp.use((req, res) => {
+        const httpsUrl = `https://${req.headers.host}${req.url}`;
+        res.redirect(301, httpsUrl);
+      });
+      
+      httpApp.listen(PORT, () => {
+        console.log(`🔄 HTTP to HTTPS redirect server running on port ${PORT}`);
+      });
+    }
+
+  } catch (error) {
+    console.error('❌ SSL Certificate Error:', error.message);
+    console.log('📝 Falling back to HTTP server...');
+    console.log('💡 To enable HTTPS, ensure SSL certificates are properly configured:');
+    console.log('   - Set SSL_KEY_PATH environment variable');
+    console.log('   - Set SSL_CERT_PATH environment variable');
+    console.log('   - Optionally set SSL_CA_PATH for certificate chain');
+    
+    // Fallback to HTTP
+    app.listen(PORT, () => {
+      console.log(`⚠️  SSM Technologies HTTP API server running on port ${PORT} (HTTPS failed)`);
+      console.log(`📊 Environment: ${process.env.NODE_ENV}`);
+      console.log(`🌐 CORS Origin: ${process.env.CORS_ORIGIN}`);
+    });
+  }
+} else {
+  // Development server (HTTP)
+  app.listen(PORT, () => {
+    console.log(`🚀 SSM Technologies API server running on port ${PORT}`);
+    console.log(`📊 Environment: ${process.env.NODE_ENV}`);
+    console.log(`🌐 CORS Origin: ${process.env.CORS_ORIGIN}`);
+    console.log(`📚 Available routes:`);
+    console.log(`   GET  /health - Health check`);
+    console.log(`   POST /api/auth/register - User registration`);
+    console.log(`   POST /api/auth/login - User login`);
+    console.log(`   GET  /api/courses - Get all courses`);
+    console.log(`   GET  /api/subjects - Get all subjects`);
+    console.log(`   GET  /api/dashboard/admin - Admin dashboard`);
+    console.log(`   GET  /api/dashboard/student - Student dashboard`);
+    console.log(`   GET  /api/dashboard/instructor - Instructor dashboard`);
+    console.log(`   GET  /api/admin/users - Admin user management`);
+    console.log(`   GET  /api/admin/courses - Admin course management`);
+    console.log(`   GET  /api/admin/batches - Admin batch management`);
+    console.log(`   GET  /api/admin/messages - Admin message management`);
+    console.log(`   GET  /api/admin/analytics/* - Admin analytics & reports`);
+    console.log(`   GET  /api/admin/settings - Admin system settings`);
+    console.log(`   POST /api/contact - Public contact form`);
+  });
+}
 
 module.exports = app;
