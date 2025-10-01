@@ -87,18 +87,18 @@ const Subjects: React.FC = () => {
     return () => clearTimeout(delayedSearch);
   }, [searchQuery]);
 
-  const getCategoryIcon = (subjectName: string) => {
+  const getCategoryIcon = (subjectName: string, size: string = "w-6 h-6") => {
     const name = subjectName.toLowerCase();
     if (name.includes('html') || name.includes('css') || name.includes('javascript') || name.includes('react') || name.includes('node') || name.includes('php') || name.includes('web') || name.includes('frontend') || name.includes('backend')) {
-      return <Code className="w-6 h-6 text-blue-600" />;
+      return <Code className={`${size} text-blue-600`} />;
     } else if (name.includes('data') || name.includes('python') || name.includes('machine learning') || name.includes('ai') || name.includes('analytics')) {
-      return <Database className="w-6 h-6 text-green-600" />;
+      return <Database className={`${size} text-green-600`} />;
     } else if (name.includes('design') || name.includes('ui') || name.includes('ux') || name.includes('graphic')) {
-      return <Palette className="w-6 h-6 text-purple-600" />;
+      return <Palette className={`${size} text-purple-600`} />;
     } else if (name.includes('marketing') || name.includes('seo') || name.includes('digital') || name.includes('social')) {
-      return <TrendingUp className="w-6 h-6 text-orange-600" />;
+      return <TrendingUp className={`${size} text-orange-600`} />;
     } else {
-      return <BookOpen className="w-6 h-6 text-gray-600" />;
+      return <BookOpen className={`${size} text-gray-600`} />;
     }
   };
 
@@ -231,19 +231,48 @@ const Subjects: React.FC = () => {
           <>
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
               {filteredSubjects.map((subject) => (
-                <Card key={subject._id} className="h-full" hover>
+                <Card key={subject._id} className="h-full overflow-hidden" hover>
+                  {/* Subject Image */}
+                  <div className="relative h-48 bg-gradient-to-br from-blue-100 to-cyan-100">
+                    {subject.imageUrl ? (
+                      <img
+                        src={subject.imageUrl}
+                        alt={subject.name}
+                        className="w-full h-full object-cover"
+                        onError={(e) => {
+                          const target = e.target as HTMLImageElement;
+                          target.style.display = 'none';
+                          target.nextElementSibling?.classList.remove('hidden');
+                        }}
+                      />
+                    ) : null}
+                    <div className={`${subject.imageUrl ? 'hidden' : ''} absolute inset-0 flex items-center justify-center`}>
+                      <div className="text-center">
+                        {getCategoryIcon(subject.name, 'w-12 h-12 text-blue-500')}
+                        <p className="text-blue-600 font-semibold mt-2 text-lg">{subject.name}</p>
+                      </div>
+                    </div>
+                    <div className="absolute inset-0 bg-gradient-to-t from-black/20 to-transparent" />
+                    
+                    {/* Course Badge */}
+                    {subject.course && (
+                      <div className="absolute top-3 left-3">
+                        <span className="bg-white/90 backdrop-blur-sm text-blue-600 text-xs font-medium px-2 py-1 rounded-full">
+                          {subject.course.name}
+                        </span>
+                      </div>
+                    )}
+                  </div>
+
                   <div className="p-6">
                     {/* Subject Header */}
-                    <div className="flex items-start gap-4 mb-4">
-                      {getCategoryIcon(subject.name)}
-                      <div className="flex-1">
-                        <h3 className="text-xl font-bold text-gray-900 mb-2">
-                          {subject.name}
-                        </h3>
-                        <p className="text-gray-600 text-sm line-clamp-3">
-                          {subject.description}
-                        </p>
-                      </div>
+                    <div className="mb-4">
+                      <h3 className="text-xl font-bold text-gray-900 mb-2 line-clamp-2">
+                        {subject.name}
+                      </h3>
+                      <p className="text-gray-600 text-sm line-clamp-3">
+                        {subject.description}
+                      </p>
                     </div>
 
                     {/* Subject Stats */}

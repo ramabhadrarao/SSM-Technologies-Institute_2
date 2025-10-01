@@ -12,6 +12,7 @@ import Home from './pages/Home';
 import Courses from './pages/Courses';
 import CourseDetail from './pages/CourseDetail';
 import Subjects from './pages/Subjects';
+import SubjectDetails from './pages/SubjectDetails';
 import About from './pages/About';
 import Contact from './pages/Contact';
 import Privacy from './pages/Privacy';
@@ -54,6 +55,7 @@ function App() {
                 <Route path="/courses" element={<Courses />} />
                 <Route path="/courses/:id" element={<CourseDetail />} />
                 <Route path="/subjects" element={<Subjects />} />
+                <Route path="/subjects/:id" element={<SubjectDetails />} />
                 <Route path="/contact" element={<Contact />} />
                 <Route path="/privacy" element={<Privacy />} />
                 <Route path="/terms" element={<Terms />} />

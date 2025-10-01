@@ -487,7 +487,22 @@ async deleteSkill(id: string) {
   }
 
   async getSubject(id: string) {
-    return this.request(`/subjects/${id}`);
+    const url = `${this.baseURL}/subjects/${id}`;
+    const config: RequestInit = {
+      headers: {
+        'Content-Type': 'application/json',
+        ...(this.token && { Authorization: `Bearer ${this.token}` }),
+      },
+    };
+
+    const response = await fetch(url, config);
+    
+    if (!response.ok) {
+      const errorData = await response.json().catch(() => ({ message: 'Network error' }));
+      throw new Error(errorData.message || `HTTP error! status: ${response.status}`);
+    }
+
+    return response.json(); // Return the full response with success property
   }
 
   async createSubject(subjectData: FormData) {
