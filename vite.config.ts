@@ -7,4 +7,12 @@ export default defineConfig({
   optimizeDeps: {
     exclude: ['lucide-react'],
   },
+  server: {
+    host: '0.0.0.0', // allow external access
+    port: 5173,
+    allowedHosts: [
+      'www.ssmtechnologies.co.in',
+      'ssmtechnologies.co.in'
+    ]
+  }
 });

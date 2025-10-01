@@ -70,7 +70,7 @@ const ForgotPassword: React.FC = () => {
       <div className="min-h-screen bg-gradient-to-br from-blue-50 to-cyan-50 flex items-center justify-center py-12 px-4 sm:px-6 lg:px-8">
         <div className="max-w-md w-full space-y-8">
           <div className="text-center">
-            <img src="/public/logo.jpeg" alt="SSM Technologies" className="mx-auto h-16 w-16 rounded-full" />
+            <img src="/logo.jpeg" alt="SSM Technologies" className="mx-auto h-16 w-16 rounded-full" />
             <h2 className="mt-6 text-3xl font-bold bg-gradient-to-r from-blue-600 to-cyan-600 bg-clip-text text-transparent">
               Check your email
             </h2>
@@ -127,7 +127,7 @@ const ForgotPassword: React.FC = () => {
     <div className="min-h-screen bg-gradient-to-br from-blue-50 to-cyan-50 flex items-center justify-center py-12 px-4 sm:px-6 lg:px-8">
       <div className="max-w-md w-full space-y-8">
         <div className="text-center">
-          <img src="/public/logo.jpeg" alt="SSM Technologies" className="mx-auto h-16 w-16 rounded-full" />
+          <img src="/logo.jpeg" alt="SSM Technologies" className="mx-auto h-16 w-16 rounded-full" />
           <h2 className="mt-6 text-3xl font-bold bg-gradient-to-r from-blue-600 to-cyan-600 bg-clip-text text-transparent">
             Forgot your password?
           </h2>
