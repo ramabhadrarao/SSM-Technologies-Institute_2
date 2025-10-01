@@ -51,7 +51,11 @@ const getCourses = async (req, res) => {
         ...course,
         imageUrl: getFileUrl(course.imageUrl),
         videoUrl: getFileUrl(course.videoUrl),
-        enrollmentCount
+        enrollmentCount,
+        isDiscountValid: course.isDiscountValid ? course.isDiscountValid() : false,
+        discountedPrice: course.getDiscountedPrice ? course.getDiscountedPrice() : course.fees,
+        effectivePrice: course.getEffectivePrice ? course.getEffectivePrice() : course.fees,
+        discountAmount: course.getDiscountAmount ? course.getDiscountAmount() : 0
       };
     }));
 
@@ -81,20 +85,28 @@ const getCourse = async (req, res) => {
   try {
     const { id } = req.params;
     
-    const course = await Course.findOne({ _id: id, isActive: true })
+    // Get course instance first to access methods for discount calculations
+    const courseInstance = await Course.findOne({ _id: id, isActive: true })
       .populate('subjects', 'name description imageUrl')
       .populate('instructor', 'user bio designation imageUrl')
-      .populate('reviews.student', 'user')
-      .lean();
+      .populate('reviews.student', 'user');
 
-    if (!course) {
+    if (!courseInstance) {
       return res.status(404).json({
         success: false,
         message: 'Course not found'
       });
     }
 
-    // Add file URLs
+    // Convert to plain object and add file URLs
+    const course = courseInstance.toObject();
+    
+    // Calculate discount values using the instance methods
+    const isDiscountValid = courseInstance.isDiscountValid();
+    const discountedPrice = courseInstance.getDiscountedPrice();
+    const effectivePrice = courseInstance.getEffectivePrice();
+    const discountAmount = courseInstance.getDiscountAmount();
+    
     const courseWithUrls = {
       ...course,
       imageUrl: getFileUrl(course.imageUrl),
@@ -104,6 +116,18 @@ const getCourse = async (req, res) => {
         imageUrl: getFileUrl(subject.imageUrl)
       }))
     };
+
+    // Explicitly add discount calculation results to ensure they're included
+    courseWithUrls.isDiscountValid = isDiscountValid;
+    courseWithUrls.discountedPrice = discountedPrice;
+    courseWithUrls.effectivePrice = effectivePrice;
+    courseWithUrls.discountAmount = discountAmount;
+
+    console.log('DEBUG: Before sending response');
+    console.log('isDiscountValid:', courseWithUrls.isDiscountValid);
+    console.log('discountedPrice:', courseWithUrls.discountedPrice);
+    console.log('effectivePrice:', courseWithUrls.effectivePrice);
+    console.log('discountAmount:', courseWithUrls.discountAmount);
 
     res.json({
       success: true,
@@ -121,7 +145,18 @@ const getCourse = async (req, res) => {
 // Create course (admin/instructor)
 const createCourse = async (req, res) => {
   try {
-    const { name, description, fees, duration, structure, subjects } = req.body;
+    const { 
+      name, 
+      description, 
+      fees, 
+      duration, 
+      structure, 
+      subjects,
+      discountPercentage,
+      isDiscountActive,
+      discountStartDate,
+      discountEndDate
+    } = req.body;
     
     const courseData = {
       name,
@@ -131,6 +166,20 @@ const createCourse = async (req, res) => {
       structure: structure || [],
       subjects: subjects || []
     };
+
+    // Add discount fields if provided
+    if (discountPercentage !== undefined) {
+      courseData.discountPercentage = parseFloat(discountPercentage);
+    }
+    if (isDiscountActive !== undefined) {
+      courseData.isDiscountActive = Boolean(isDiscountActive);
+    }
+    if (discountStartDate) {
+      courseData.discountStartDate = new Date(discountStartDate);
+    }
+    if (discountEndDate) {
+      courseData.discountEndDate = new Date(discountEndDate);
+    }
 
     // Add file URLs if uploaded
     if (req.files) {
@@ -172,14 +221,21 @@ const createCourse = async (req, res) => {
     await course.populate('subjects', 'name description');
     await course.populate('instructor', 'user bio designation');
 
+    // Add pricing information to response
+    const courseResponse = {
+      ...course.toObject(),
+      imageUrl: getFileUrl(course.imageUrl),
+      videoUrl: getFileUrl(course.videoUrl),
+      isDiscountValid: course.isDiscountValid(),
+      discountedPrice: course.getDiscountedPrice(),
+      effectivePrice: course.getEffectivePrice(),
+      discountAmount: course.getDiscountAmount()
+    };
+
     res.status(201).json({
       success: true,
       message: 'Course created successfully',
-      data: {
-        ...course.toObject(),
-        imageUrl: getFileUrl(course.imageUrl),
-        videoUrl: getFileUrl(course.videoUrl)
-      }
+      data: courseResponse
     });
   } catch (error) {
     console.error('Create course error:', error);
@@ -194,7 +250,18 @@ const createCourse = async (req, res) => {
 const updateCourse = async (req, res) => {
   try {
     const { id } = req.params;
-    const { name, description, fees, duration, structure, subjects } = req.body;
+    const { 
+      name, 
+      description, 
+      fees, 
+      duration, 
+      structure, 
+      subjects,
+      discountPercentage,
+      isDiscountActive,
+      discountStartDate,
+      discountEndDate
+    } = req.body;
     
     const course = await Course.findById(id);
     if (!course) {
@@ -240,6 +307,20 @@ const updateCourse = async (req, res) => {
     if (structure) course.structure = structure;
     if (subjects) course.subjects = subjects;
 
+    // Update discount fields
+    if (discountPercentage !== undefined) {
+      course.discountPercentage = parseFloat(discountPercentage);
+    }
+    if (isDiscountActive !== undefined) {
+      course.isDiscountActive = Boolean(isDiscountActive);
+    }
+    if (discountStartDate !== undefined) {
+      course.discountStartDate = discountStartDate ? new Date(discountStartDate) : null;
+    }
+    if (discountEndDate !== undefined) {
+      course.discountEndDate = discountEndDate ? new Date(discountEndDate) : null;
+    }
+
     // Handle file uploads
     if (req.files) {
       if (req.files.image) {
@@ -264,14 +345,21 @@ const updateCourse = async (req, res) => {
     await course.populate('subjects', 'name description');
     await course.populate('instructor', 'user bio designation');
 
+    // Add pricing information to response
+    const courseResponse = {
+      ...course.toObject(),
+      imageUrl: getFileUrl(course.imageUrl),
+      videoUrl: getFileUrl(course.videoUrl),
+      isDiscountValid: course.isDiscountValid(),
+      discountedPrice: course.getDiscountedPrice(),
+      effectivePrice: course.getEffectivePrice(),
+      discountAmount: course.getDiscountAmount()
+    };
+
     res.json({
       success: true,
       message: 'Course updated successfully',
-      data: {
-        ...course.toObject(),
-        imageUrl: getFileUrl(course.imageUrl),
-        videoUrl: getFileUrl(course.videoUrl)
-      }
+      data: courseResponse
     });
   } catch (error) {
     console.error('Update course error:', error);

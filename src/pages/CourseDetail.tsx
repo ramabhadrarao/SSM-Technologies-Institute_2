@@ -193,7 +193,21 @@ const CourseDetail: React.FC = () => {
               <div className="flex flex-wrap gap-6 mb-6">
                 <div className="flex items-center">
                   <IndianRupee className="w-5 h-5 text-green-600 mr-2" />
-                  <span className="text-lg font-semibold">₹{course.fees?.toLocaleString('en-IN')}</span>
+                  {course.isDiscountValid && course.discountedPrice ? (
+                    <div className="flex items-center space-x-2">
+                      <span className="text-lg font-semibold text-green-600">
+                        ₹{course.discountedPrice.toLocaleString('en-IN')}
+                      </span>
+                      <span className="text-sm text-gray-500 line-through">
+                        ₹{course.fees?.toLocaleString('en-IN')}
+                      </span>
+                      <span className="bg-red-100 text-red-800 text-xs font-medium px-2 py-1 rounded-full">
+                        {course.discountPercentage}% OFF
+                      </span>
+                    </div>
+                  ) : (
+                    <span className="text-lg font-semibold">₹{course.fees?.toLocaleString('en-IN')}</span>
+                  )}
                 </div>
                 <div className="flex items-center">
                   <Clock className="w-5 h-5 text-blue-600 mr-2" />
@@ -476,7 +490,23 @@ const CourseDetail: React.FC = () => {
               <div className="space-y-4">
                 <div className="flex items-center justify-between">
                   <span className="text-gray-600">Price</span>
-                  <span className="font-semibold text-green-600">₹{course.fees?.toLocaleString('en-IN')}</span>
+                  {course.isDiscountValid && course.discountedPrice ? (
+                    <div className="flex flex-col items-end">
+                      <div className="flex items-center space-x-2">
+                        <span className="font-semibold text-green-600">
+                          ₹{course.discountedPrice.toLocaleString('en-IN')}
+                        </span>
+                        <span className="bg-red-100 text-red-800 text-xs font-medium px-2 py-1 rounded-full">
+                          {course.discountPercentage}% OFF
+                        </span>
+                      </div>
+                      <span className="text-sm text-gray-500 line-through">
+                        ₹{course.fees?.toLocaleString('en-IN')}
+                      </span>
+                    </div>
+                  ) : (
+                    <span className="font-semibold text-green-600">₹{course.fees?.toLocaleString('en-IN')}</span>
+                  )}
                 </div>
                 <div className="flex items-center justify-between">
                   <span className="text-gray-600">Duration</span>

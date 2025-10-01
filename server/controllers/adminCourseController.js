@@ -73,7 +73,12 @@ const getAdminCourses = async (req, res) => {
         subjects: course.subjects.map(subject => ({
           ...subject,
           imageUrl: getFileUrl(subject.imageUrl)
-        }))
+        })),
+        // Add discount pricing information
+        isDiscountValid: course.isDiscountValid ? course.isDiscountValid() : false,
+        discountedPrice: course.getDiscountedPrice ? course.getDiscountedPrice() : course.fees,
+        effectivePrice: course.getEffectivePrice ? course.getEffectivePrice() : course.fees,
+        discountAmount: course.getDiscountAmount ? course.getDiscountAmount() : 0
       };
     }));
 
@@ -144,8 +149,22 @@ const getAdminCourse = async (req, res) => {
       subjects: course.subjects.map(subject => ({
         ...subject,
         imageUrl: getFileUrl(subject.imageUrl)
-      }))
+      })),
+      // Add discount pricing information
+      isDiscountValid: false,
+      discountedPrice: course.fees,
+      effectivePrice: course.fees,
+      discountAmount: 0
     };
+
+    // Get course instance to access methods
+    const courseInstance = await Course.findById(course._id);
+    if (courseInstance) {
+      courseWithDetails.isDiscountValid = courseInstance.isDiscountValid();
+      courseWithDetails.discountedPrice = courseInstance.getDiscountedPrice();
+      courseWithDetails.effectivePrice = courseInstance.getEffectivePrice();
+      courseWithDetails.discountAmount = courseInstance.getDiscountAmount();
+    }
 
     res.json({
       success: true,
@@ -172,7 +191,11 @@ const createAdminCourse = async (req, res) => {
       subjects, 
       instructor,
       isActive = true,
-      videoUrl // YouTube video URL
+      videoUrl, // YouTube video URL
+      discountPercentage,
+      isDiscountActive,
+      discountStartDate,
+      discountEndDate
     } = req.body;
     
     const courseData = {
@@ -186,6 +209,20 @@ const createAdminCourse = async (req, res) => {
       isActive,
       videoUrl: videoUrl || null // Store YouTube URL directly
     };
+
+    // Add discount fields if provided
+    if (discountPercentage !== undefined) {
+      courseData.discountPercentage = parseFloat(discountPercentage);
+    }
+    if (isDiscountActive !== undefined) {
+      courseData.isDiscountActive = Boolean(isDiscountActive);
+    }
+    if (discountStartDate) {
+      courseData.discountStartDate = new Date(discountStartDate);
+    }
+    if (discountEndDate) {
+      courseData.discountEndDate = new Date(discountEndDate);
+    }
 
     // Add image URL if uploaded
     if (req.files && req.files.image) {
@@ -209,7 +246,12 @@ const createAdminCourse = async (req, res) => {
         imageUrl: getFileUrl(populatedCourse.imageUrl),
         videoUrl: populatedCourse.videoUrl, // Return YouTube URL as-is
         youtubeEmbedUrl: populatedCourse.getYouTubeEmbedUrl(),
-        youtubeThumbnail: populatedCourse.getYouTubeThumbnail()
+        youtubeThumbnail: populatedCourse.getYouTubeThumbnail(),
+        // Add discount pricing information
+        isDiscountValid: populatedCourse.isDiscountValid(),
+        discountedPrice: populatedCourse.getDiscountedPrice(),
+        effectivePrice: populatedCourse.getEffectivePrice(),
+        discountAmount: populatedCourse.getDiscountAmount()
       }
     });
   } catch (error) {
@@ -235,7 +277,11 @@ const updateAdminCourse = async (req, res) => {
       subjects, 
       instructor,
       isActive,
-      videoUrl // YouTube video URL
+      videoUrl, // YouTube video URL
+      discountPercentage,
+      isDiscountActive,
+      discountStartDate,
+      discountEndDate
     } = req.body;
     
     const course = await Course.findById(id);
@@ -251,11 +297,30 @@ const updateAdminCourse = async (req, res) => {
     if (description) course.description = description;
     if (fees !== undefined) course.fees = parseFloat(fees);
     if (duration) course.duration = duration;
-    if (structure) course.structure = JSON.parse(structure);
-    if (subjects) course.subjects = JSON.parse(subjects);
+    if (structure) {
+      course.structure = Array.isArray(structure) ? structure : JSON.parse(structure);
+    }
+    if (subjects) {
+      course.subjects = Array.isArray(subjects) ? subjects : JSON.parse(subjects);
+    }
     if (instructor) course.instructor = instructor;
     if (typeof isActive === 'boolean') course.isActive = isActive;
     if (videoUrl !== undefined) course.videoUrl = videoUrl; // Update YouTube URL
+
+    // Update discount fields
+    if (discountPercentage !== undefined) {
+      course.discountPercentage = parseFloat(discountPercentage);
+    }
+    if (isDiscountActive !== undefined) {
+      // Handle string 'false' from FormData properly
+      course.isDiscountActive = isDiscountActive === 'true' || isDiscountActive === true;
+    }
+    if (discountStartDate !== undefined) {
+      course.discountStartDate = discountStartDate ? new Date(discountStartDate) : null;
+    }
+    if (discountEndDate !== undefined) {
+      course.discountEndDate = discountEndDate ? new Date(discountEndDate) : null;
+    }
 
     // Handle image upload only (video is now YouTube URL)
     if (req.files && req.files.image) {
@@ -282,7 +347,12 @@ const updateAdminCourse = async (req, res) => {
         imageUrl: getFileUrl(updatedCourse.imageUrl),
         videoUrl: updatedCourse.videoUrl, // Return YouTube URL as-is
         youtubeEmbedUrl: updatedCourse.getYouTubeEmbedUrl(),
-        youtubeThumbnail: updatedCourse.getYouTubeThumbnail()
+        youtubeThumbnail: updatedCourse.getYouTubeThumbnail(),
+        // Add discount pricing information
+        isDiscountValid: updatedCourse.isDiscountValid(),
+        discountedPrice: updatedCourse.getDiscountedPrice(),
+        effectivePrice: updatedCourse.getEffectivePrice(),
+        discountAmount: updatedCourse.getDiscountAmount()
       }
     });
   } catch (error) {

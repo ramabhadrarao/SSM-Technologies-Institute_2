@@ -267,14 +267,34 @@ const Courses: React.FC = () => {
                       </div>
                     )}
                     <div className="absolute top-4 right-4 bg-white/95 backdrop-blur-sm px-3 py-1 rounded-full">
-                      <span className="text-sm font-bold text-blue-600 flex items-center">
-                        <IndianRupee className="w-4 h-4" />
-                        {course.fees?.toLocaleString('en-IN')}
-                      </span>
+                      {course.isDiscountValid && course.discountedPrice ? (
+                        <div className="flex items-center space-x-2">
+                          <span className="text-sm font-bold text-green-600 flex items-center">
+                            <IndianRupee className="w-4 h-4" />
+                            {course.discountedPrice.toLocaleString('en-IN')}
+                          </span>
+                          <span className="text-xs text-gray-500 line-through">
+                            ₹{course.fees?.toLocaleString('en-IN')}
+                          </span>
+                        </div>
+                      ) : (
+                        <span className="text-sm font-bold text-blue-600 flex items-center">
+                          <IndianRupee className="w-4 h-4" />
+                          {course.fees?.toLocaleString('en-IN')}
+                        </span>
+                      )}
                     </div>
                     
+                    {course.isDiscountValid && course.discountPercentage && (
+                      <div className="absolute top-4 left-4 bg-red-500 text-white px-2 py-1 rounded-full">
+                        <span className="text-xs font-bold">
+                          {course.discountPercentage}% OFF
+                        </span>
+                      </div>
+                    )}
+                    
                     {course.rating > 0 && (
-                      <div className="absolute top-4 left-4 bg-white/95 backdrop-blur-sm px-2 py-1 rounded-full">
+                      <div className={`absolute ${course.isDiscountValid && course.discountPercentage ? 'top-16' : 'top-4'} left-4 bg-white/95 backdrop-blur-sm px-2 py-1 rounded-full`}>
                         <div className="flex items-center">
                           <Star className="w-4 h-4 text-yellow-400 fill-current" />
                           <span className="text-sm font-medium text-gray-800 ml-1">

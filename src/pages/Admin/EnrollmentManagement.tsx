@@ -31,6 +31,15 @@ interface Course {
   name: string;
   description: string;
   fees: number;
+  // Discount fields
+  discountPercentage?: number;
+  isDiscountActive?: boolean;
+  discountStartDate?: string;
+  discountEndDate?: string;
+  isDiscountValid?: boolean;
+  discountedPrice?: number;
+  effectivePrice?: number;
+  discountAmount?: number;
 }
 
 interface Student {
@@ -426,7 +435,21 @@ const EnrollmentManagement: React.FC = () => {
                             {enrollment.course?.name || 'Unknown Course'}
                           </div>
                           <div className="text-sm text-gray-500">
-                            ₹{enrollment.course?.fees?.toLocaleString() || '0'}
+                            {enrollment.course?.isDiscountValid && enrollment.course?.effectivePrice ? (
+                              <div className="flex items-center space-x-2">
+                                <span className="text-green-600 font-medium">
+                                  ₹{enrollment.course.effectivePrice.toLocaleString()}
+                                </span>
+                                <span className="line-through text-xs">
+                                  ₹{enrollment.course.fees?.toLocaleString() || '0'}
+                                </span>
+                                <span className="bg-red-100 text-red-800 text-xs px-1 py-0.5 rounded">
+                                  {enrollment.course.discountPercentage}% OFF
+                                </span>
+                              </div>
+                            ) : (
+                              <span>₹{enrollment.course?.fees?.toLocaleString() || '0'}</span>
+                            )}
                           </div>
                         </td>
                         <td className="px-6 py-4 whitespace-nowrap">
@@ -658,7 +681,23 @@ const EnrollmentManagement: React.FC = () => {
                     <h4 className="font-medium text-gray-900 mb-2">Course Information</h4>
                     <div className="space-y-2 text-sm">
                       <p><span className="font-medium">Name:</span> {selectedEnrollment.course?.name || 'Unknown'}</p>
-                      <p><span className="font-medium">Fees:</span> ₹{selectedEnrollment.course?.fees?.toLocaleString() || '0'}</p>
+                      <p><span className="font-medium">Fees:</span> 
+                        {selectedEnrollment.course?.isDiscountValid && selectedEnrollment.course?.effectivePrice ? (
+                          <span className="ml-1">
+                            <span className="text-green-600 font-medium">
+                              ₹{selectedEnrollment.course.effectivePrice.toLocaleString()}
+                            </span>
+                            <span className="text-gray-500 line-through text-xs ml-2">
+                              ₹{selectedEnrollment.course.fees?.toLocaleString() || '0'}
+                            </span>
+                            <span className="bg-red-100 text-red-800 text-xs px-2 py-1 rounded ml-2">
+                              {selectedEnrollment.course.discountPercentage}% OFF
+                            </span>
+                          </span>
+                        ) : (
+                          <span className="ml-1">₹{selectedEnrollment.course?.fees?.toLocaleString() || '0'}</span>
+                        )}
+                      </p>
                       <p><span className="font-medium">Description:</span> {selectedEnrollment.course?.description || 'No description'}</p>
                     </div>
                   </div>

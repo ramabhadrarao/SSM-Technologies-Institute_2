@@ -28,6 +28,15 @@ export interface Course {
   enrollmentCount: number;
   rating: number;
   reviews: Review[];
+  // Discount fields
+  discountPercentage?: number;
+  isDiscountActive?: boolean;
+  discountStartDate?: string;
+  discountEndDate?: string;
+  isDiscountValid?: boolean;
+  discountedPrice?: number;
+  effectivePrice?: number;
+  discountAmount?: number;
   createdAt: string;
   updatedAt: string;
 }

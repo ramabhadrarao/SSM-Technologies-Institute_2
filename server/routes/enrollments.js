@@ -28,7 +28,7 @@ router.post('/:courseId', auth, async (req, res) => {
       });
     }
 
-    // Check if course exists
+    // Check if course exists and get pricing information
     const course = await Course.findById(courseId);
     if (!course) {
       return res.status(404).json({
@@ -36,6 +36,11 @@ router.post('/:courseId', auth, async (req, res) => {
         message: 'Course not found'
       });
     }
+
+    // Calculate effective price (considering discounts)
+    const effectivePrice = course.getEffectivePrice();
+    const isDiscountValid = course.isDiscountValid();
+    const discountAmount = isDiscountValid ? course.fees - effectivePrice : 0;
 
     // Check if already enrolled
     const alreadyEnrolled = student.enrolledCourses.some(
@@ -69,7 +74,13 @@ router.post('/:courseId', auth, async (req, res) => {
       message: 'Successfully enrolled in course',
       data: {
         courseId,
-        enrolledAt: new Date()
+        enrolledAt: new Date(),
+        pricing: {
+          originalPrice: course.fees,
+          effectivePrice: effectivePrice,
+          discountAmount: discountAmount,
+          isDiscountApplied: isDiscountValid
+        }
       }
     });
 

@@ -32,6 +32,31 @@ const courseSchema = new mongoose.Schema({
     required: true,
     min: 0
   },
+  // Discount fields
+  discountPercentage: {
+    type: Number,
+    default: 0,
+    min: 0,
+    max: 100,
+    validate: {
+      validator: function(v) {
+        return v >= 0 && v <= 100;
+      },
+      message: 'Discount percentage must be between 0 and 100'
+    }
+  },
+  isDiscountActive: {
+    type: Boolean,
+    default: false
+  },
+  discountStartDate: {
+    type: Date,
+    default: null
+  },
+  discountEndDate: {
+    type: Date,
+    default: null
+  },
   duration: {
     type: String,
     required: true
@@ -108,6 +133,51 @@ courseSchema.methods.getYouTubeEmbedUrl = function() {
 courseSchema.methods.getYouTubeThumbnail = function(quality = 'maxresdefault') {
   const videoId = this.getYouTubeVideoId();
   return videoId ? `https://img.youtube.com/vi/${videoId}/${quality}.jpg` : null;
+};
+
+// Helper method to check if discount is currently valid
+courseSchema.methods.isDiscountValid = function() {
+  if (!this.isDiscountActive || this.discountPercentage <= 0) {
+    return false;
+  }
+  
+  const now = new Date();
+  
+  // Check if discount has start date and it's not yet started
+  if (this.discountStartDate && now < this.discountStartDate) {
+    return false;
+  }
+  
+  // Check if discount has end date and it's expired
+  if (this.discountEndDate && now > this.discountEndDate) {
+    return false;
+  }
+  
+  return true;
+};
+
+// Helper method to calculate discounted price
+courseSchema.methods.getDiscountedPrice = function() {
+  if (!this.isDiscountValid()) {
+    return this.fees;
+  }
+  
+  const discountAmount = (this.fees * this.discountPercentage) / 100;
+  return Math.round((this.fees - discountAmount) * 100) / 100; // Round to 2 decimal places
+};
+
+// Helper method to get effective price (discounted if valid, otherwise original)
+courseSchema.methods.getEffectivePrice = function() {
+  return this.isDiscountValid() ? this.getDiscountedPrice() : this.fees;
+};
+
+// Helper method to get discount amount
+courseSchema.methods.getDiscountAmount = function() {
+  if (!this.isDiscountValid()) {
+    return 0;
+  }
+  
+  return Math.round((this.fees - this.getDiscountedPrice()) * 100) / 100;
 };
 
 module.exports = mongoose.model('Course', courseSchema);

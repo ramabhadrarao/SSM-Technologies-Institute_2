@@ -51,6 +51,15 @@ interface Course {
   enrollmentCount: number;
   rating: number;
   createdAt: string;
+  // Discount fields
+  discountPercentage?: number;
+  isDiscountActive?: boolean;
+  discountStartDate?: string;
+  discountEndDate?: string;
+  isDiscountValid?: boolean;
+  discountedPrice?: number;
+  effectivePrice?: number;
+  discountAmount?: number;
 }
 
 interface CourseFormData {
@@ -63,6 +72,11 @@ interface CourseFormData {
   instructor: string;
   isActive: boolean;
   videoUrl: string; // YouTube video URL
+  // Discount fields
+  discountPercentage: string;
+  isDiscountActive: boolean;
+  discountStartDate: string;
+  discountEndDate: string;
 }
 
 const AdminCoursesManagement: React.FC = () => {
@@ -90,7 +104,12 @@ const AdminCoursesManagement: React.FC = () => {
     subjects: [],
     instructor: '',
     isActive: true,
-    videoUrl: '' // YouTube video URL
+    videoUrl: '', // YouTube video URL
+    // Discount fields
+    discountPercentage: '0',
+    isDiscountActive: false,
+    discountStartDate: '',
+    discountEndDate: ''
   });
   const [imageFile, setImageFile] = useState<File | null>(null);
   const [newStructureItem, setNewStructureItem] = useState('');
@@ -160,6 +179,12 @@ const AdminCoursesManagement: React.FC = () => {
       formData.append('isActive', courseFormData.isActive.toString());
       formData.append('videoUrl', courseFormData.videoUrl); // YouTube URL
       
+      // Discount fields
+      formData.append('discountPercentage', courseFormData.discountPercentage);
+      formData.append('isDiscountActive', courseFormData.isDiscountActive.toString());
+      formData.append('discountStartDate', courseFormData.discountStartDate);
+      formData.append('discountEndDate', courseFormData.discountEndDate);
+      
       if (imageFile) {
         formData.append('image', imageFile);
       }
@@ -194,6 +219,12 @@ const AdminCoursesManagement: React.FC = () => {
       formData.append('instructor', courseFormData.instructor);
       formData.append('isActive', courseFormData.isActive.toString());
       formData.append('videoUrl', courseFormData.videoUrl); // YouTube URL
+      
+      // Discount fields
+      formData.append('discountPercentage', courseFormData.discountPercentage);
+      formData.append('isDiscountActive', courseFormData.isDiscountActive.toString());
+      formData.append('discountStartDate', courseFormData.discountStartDate);
+      formData.append('discountEndDate', courseFormData.discountEndDate);
       
       if (imageFile) {
         formData.append('image', imageFile);
@@ -267,7 +298,12 @@ const AdminCoursesManagement: React.FC = () => {
       subjects: course.subjects?.map(s => s._id) || [],
       instructor: course.instructor?._id || '',
       isActive: course.isActive,
-      videoUrl: course.videoUrl || '' // YouTube URL
+      videoUrl: course.videoUrl || '', // YouTube URL
+      // Discount fields
+      discountPercentage: course.discountPercentage?.toString() || '0',
+      isDiscountActive: course.isDiscountActive || false,
+      discountStartDate: course.discountStartDate ? new Date(course.discountStartDate).toISOString().split('T')[0] : '',
+      discountEndDate: course.discountEndDate ? new Date(course.discountEndDate).toISOString().split('T')[0] : ''
     });
     setShowCourseModal(true);
   };
@@ -282,7 +318,12 @@ const AdminCoursesManagement: React.FC = () => {
       subjects: [],
       instructor: '',
       isActive: true,
-      videoUrl: '' // YouTube URL
+      videoUrl: '', // YouTube URL
+      // Discount fields
+      discountPercentage: '0',
+      isDiscountActive: false,
+      discountStartDate: '',
+      discountEndDate: ''
     });
     setImageFile(null);
     setNewStructureItem('');
@@ -814,6 +855,84 @@ const AdminCoursesManagement: React.FC = () => {
                       ))}
                     </select>
                   </div>
+                </div>
+
+                {/* Discount Section */}
+                <div className="border border-gray-200 rounded-lg p-4 bg-gray-50">
+                  <h4 className="text-md font-medium text-gray-900 mb-4">Discount Settings</h4>
+                  
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-1">
+                        Discount Percentage (%)
+                      </label>
+                      <input
+                        type="number"
+                        min="0"
+                        max="100"
+                        value={courseFormData.discountPercentage}
+                        onChange={(e) => setCourseFormData({...courseFormData, discountPercentage: e.target.value})}
+                        className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                        placeholder="Enter discount percentage"
+                      />
+                    </div>
+                    <div className="flex items-center">
+                      <label className="flex items-center space-x-2 cursor-pointer">
+                        <input
+                          type="checkbox"
+                          checked={courseFormData.isDiscountActive}
+                          onChange={(e) => setCourseFormData({...courseFormData, isDiscountActive: e.target.checked})}
+                          className="w-4 h-4 text-blue-600 bg-gray-100 border-gray-300 rounded focus:ring-blue-500 focus:ring-2"
+                        />
+                        <span className="text-sm font-medium text-gray-700">
+                          Activate Discount
+                        </span>
+                      </label>
+                    </div>
+                  </div>
+
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-1">
+                        Discount Start Date
+                      </label>
+                      <input
+                        type="date"
+                        value={courseFormData.discountStartDate}
+                        onChange={(e) => setCourseFormData({...courseFormData, discountStartDate: e.target.value})}
+                        className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-1">
+                        Discount End Date
+                      </label>
+                      <input
+                        type="date"
+                        value={courseFormData.discountEndDate}
+                        onChange={(e) => setCourseFormData({...courseFormData, discountEndDate: e.target.value})}
+                        className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                      />
+                    </div>
+                  </div>
+
+                  {/* Discount Preview */}
+                  {courseFormData.fees && courseFormData.discountPercentage && parseFloat(courseFormData.discountPercentage) > 0 && (
+                    <div className="mt-4 p-3 bg-blue-50 border border-blue-200 rounded-lg">
+                      <div className="text-sm text-blue-800">
+                        <strong>Discount Preview:</strong>
+                        <div className="mt-1">
+                          Original Price: ₹{parseFloat(courseFormData.fees).toLocaleString()}
+                        </div>
+                        <div>
+                          Discount: {courseFormData.discountPercentage}% (₹{(parseFloat(courseFormData.fees) * parseFloat(courseFormData.discountPercentage) / 100).toLocaleString()})
+                        </div>
+                        <div className="font-semibold">
+                          Final Price: ₹{(parseFloat(courseFormData.fees) - (parseFloat(courseFormData.fees) * parseFloat(courseFormData.discountPercentage) / 100)).toLocaleString()}
+                        </div>
+                      </div>
+                    </div>
+                  )}
                 </div>
 
                 {/* Course Structure */}

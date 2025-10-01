@@ -79,8 +79,24 @@ const CoursesSection: React.FC = () => {
                   </div>
                 )}
                 <div className="absolute top-4 right-4 bg-white/90 backdrop-blur-sm px-3 py-1 rounded-full">
-                  <span className="text-sm font-semibold text-blue-600">₹{course.fees}</span>
+                  {course.isDiscountValid && course.discountedPrice ? (
+                    <div className="flex items-center space-x-1">
+                      <span className="text-sm font-bold text-green-600">
+                        ₹{course.discountedPrice.toLocaleString('en-IN')}
+                      </span>
+                      <span className="text-xs text-gray-500 line-through">
+                        ₹{course.fees?.toLocaleString('en-IN')}
+                      </span>
+                    </div>
+                  ) : (
+                    <span className="text-sm font-semibold text-blue-600">₹{course.fees}</span>
+                  )}
                 </div>
+                {course.isDiscountValid && course.discountPercentage && (
+                  <div className="absolute top-4 left-4 bg-red-500 text-white px-2 py-1 rounded-full">
+                    <span className="text-xs font-bold">{course.discountPercentage}% OFF</span>
+                  </div>
+                )}
               </div>
 
               <div className="p-6">
