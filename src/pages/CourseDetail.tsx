@@ -13,7 +13,7 @@ import {
   CheckCircle,
   ArrowLeft
 } from 'lucide-react';
-import { apiClient } from '../lib/api';
+import { apiClient, getImageBaseUrl } from '../lib/api';
 import { Course } from '../types';
 import Card from '../components/UI/Card';
 import LoadingSpinner from '../components/UI/LoadingSpinner';
@@ -368,7 +368,7 @@ const CourseDetail: React.FC = () => {
           <div className="flex-shrink-0">
             {course.instructor.imageUrl ? (
               <img
-                src={course.instructor.imageUrl}
+                src={`${getImageBaseUrl()}${course.instructor.imageUrl}`}
                 alt={`${course.instructor.user.firstName} ${course.instructor.user.lastName}`}
                 className="w-24 h-24 rounded-full object-cover border-4 border-blue-100"
               />

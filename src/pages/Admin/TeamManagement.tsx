@@ -403,17 +403,17 @@ const TeamManagement: React.FC = () => {
                 <option value="inactive">Inactive</option>
               </select>
               <select
-                value={departmentFilter}
-                onChange={(e) => setDepartmentFilter(e.target.value)}
-                className="px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-              >
-                <option value="all">All Departments</option>
-                <option value="Leadership">Leadership</option>
-                <option value="Academic">Academic</option>
-                <option value="Administration">Administration</option>
-                <option value="Technology">Technology</option>
-                <option value="Marketing">Marketing</option>
-              </select>
+              value={filterDepartment}
+              onChange={(e) => setFilterDepartment(e.target.value)}
+              className="px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+            >
+              <option value="">All Departments</option>
+              <option value="Leadership">Leadership</option>
+              <option value="Academic">Academic</option>
+              <option value="Technical">Technical</option>
+              <option value="Administration">Administration</option>
+              <option value="Marketing">Marketing</option>
+            </select>
             </div>
           </div>
           
@@ -720,8 +720,8 @@ const TeamManagement: React.FC = () => {
                       <option value="">Select Department</option>
                       <option value="Leadership">Leadership</option>
                       <option value="Academic">Academic</option>
+                      <option value="Technical">Technical</option>
                       <option value="Administration">Administration</option>
-                      <option value="Technology">Technology</option>
                       <option value="Marketing">Marketing</option>
                     </select>
                   </div>

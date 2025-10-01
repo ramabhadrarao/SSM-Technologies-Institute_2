@@ -2,7 +2,7 @@
 import React, { useState, useEffect } from 'react';
 import { ChevronLeft, ChevronRight } from 'lucide-react';
 import { Link } from 'react-router-dom';
-import { apiClient } from '../../lib/api';
+import { apiClient, getImageBaseUrl } from '../../lib/api';
 
 interface Slide {
   _id: string;
@@ -113,7 +113,7 @@ const HeroSlider: React.FC = () => {
       return imageUrl;
     }
     // Otherwise, prepend the server URL
-    return `http://localhost:3001${imageUrl}`;
+    return `${getImageBaseUrl()}${imageUrl}`;
   };
 
   if (loading) {

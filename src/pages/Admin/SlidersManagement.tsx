@@ -13,6 +13,7 @@ import {
   X,
   AlertCircle
 } from 'lucide-react';
+import { getImageBaseUrl } from '../../lib/api';
 import { apiClient } from '../../lib/api';
 
 interface Slider {
@@ -104,7 +105,7 @@ const SlidersManagement: React.FC = () => {
       isActive: slider.isActive,
       isDefault: slider.isDefault
     });
-    setPreviewUrl(slider.imageUrl ? `http://localhost:3001${slider.imageUrl}` : '');
+    setPreviewUrl(slider.imageUrl ? `${getImageBaseUrl()}${slider.imageUrl}` : '');
     setShowForm(true);
   };
 
@@ -464,7 +465,7 @@ const SlidersManagement: React.FC = () => {
                         <div className="flex-shrink-0">
                           {slider.imageUrl ? (
                             <img
-                              src={`http://localhost:3001${slider.imageUrl}`}
+                              src={`${getImageBaseUrl()}${slider.imageUrl}`}
                               alt={slider.title}
                               className="w-24 h-16 object-cover rounded-lg"
                             />

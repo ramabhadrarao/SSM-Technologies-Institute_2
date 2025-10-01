@@ -7,7 +7,7 @@ import {
   GraduationCap, Award, Briefcase, Link as LinkIcon,
   CheckSquare, Square, Search, Mail, Phone, Code
 } from 'lucide-react';
-import { apiClient } from '../../lib/api';
+import { apiClient, getImageBaseUrl } from '../../lib/api';
 import LoadingSpinner from '../../components/UI/LoadingSpinner';
 
 interface Skill {
@@ -106,7 +106,7 @@ const InstructorProfile: React.FC = () => {
         });
         
         if (profile.instructorProfile.imageUrl) {
-          setProfileImagePreview(profile.instructorProfile.imageUrl);
+          setProfileImagePreview(`${getImageBaseUrl()}${profile.instructorProfile.imageUrl}`);
         }
         
         if (profile.instructorProfile.skills && Array.isArray(profile.instructorProfile.skills)) {

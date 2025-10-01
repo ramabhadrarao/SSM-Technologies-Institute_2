@@ -22,6 +22,34 @@ const getApiBaseUrl = (): string => {
   return 'http://localhost:3001/api';
 };
 
+// Helper function to get base URL for images and static files
+export const getImageBaseUrl = (): string => {
+  let baseUrl = '';
+  
+  // Production environment variable takes priority
+  if (import.meta.env.VITE_API_URL) {
+    // Remove /api suffix to get the base server URL
+    baseUrl = import.meta.env.VITE_API_URL.replace('/api', '');
+  }
+  // Auto-detect based on current host in production
+  else if (import.meta.env.PROD) {
+    const protocol = window.location.protocol;
+    const hostname = window.location.hostname;
+    
+    // If running on a custom domain, use the same domain
+    if (hostname !== 'localhost' && hostname !== '127.0.0.1') {
+      baseUrl = `${protocol}//${hostname}`;
+    }
+  }
+  // Development fallback
+  else {
+    baseUrl = 'http://localhost:3001';
+  }
+  
+  // Ensure the base URL ends with a slash
+  return baseUrl.endsWith('/') ? baseUrl : `${baseUrl}/`;
+};
+
 const API_BASE_URL = getApiBaseUrl();
 
 class ApiClient {
